@@ -77,10 +77,20 @@ public class DishServiceImpl implements DishService {
      * @return
      */
     public DishVO getDishWithFlavorById(Integer id) {
-        // 使用 useGenerateKey 和 keyProperty 来返回对应的id
+        // 查询菜品
         Dish dish = dishMapper.getById(id);
-        // 根据id查询对应的口味数据
+        // 查不到直接返回 null，交由调用方处理
+        if (dish == null) {
+            return null;
+        }
+
+        // 查询口味数据，若为空则给空列表，防止前端空指针
         List<DishFlavor> dishFlavors = dishFlavorMapper.getByDishId(id);
+        if (dishFlavors == null) {
+            dishFlavors = new ArrayList<>();
+        }
+
+        // 组装 VO
         DishVO dishVO = new DishVO();
         BeanUtils.copyProperties(dish, dishVO);
         dishVO.setFlavors(dishFlavors);

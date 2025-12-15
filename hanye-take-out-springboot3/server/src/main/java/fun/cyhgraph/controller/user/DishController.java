@@ -69,6 +69,9 @@ public class DishController {
     public Result<DishVO> getDish(@PathVariable Integer id) {
         log.info("用户根据菜品id查询菜品详情和对应口味：{}", id);
         DishVO dishVO = dishService.getDishWithFlavorById(id);
+        if (dishVO == null) {
+            return Result.error("菜品不存在");
+        }
         return Result.success(dishVO);
     }
 
