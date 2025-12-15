@@ -29,7 +29,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     };
     const toHome = () => {
       common_vendor.index.switchTab({
-        url: "/pages/index/index"
+        url: "/pages/order/order"
       });
     };
     const toDetail = () => {
@@ -46,5 +46,5 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     };
   }
 });
-const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-03f045ab"], ["__file", "D:/MyCode/public_project/hanye-take-out/hanye-take-out-uniapp/src/pages/submit/success.vue"]]);
+const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-03f045ab"], ["__file", "D:/opgames/waimai/hanye-take-out/hanye-take-out-uniapp/src/pages/submit/success.vue"]]);
 wx.createPage(MiniProgramPage);

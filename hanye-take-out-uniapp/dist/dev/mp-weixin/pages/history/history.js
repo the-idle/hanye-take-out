@@ -60,6 +60,8 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         name: "已取消"
       }
     ];
+    const page = common_vendor.ref(1);
+    common_vendor.ref(10);
     const activeIndex = common_vendor.ref(0);
     const historyOrders = common_vendor.ref([]);
     const orderDTO = common_vendor.ref({
@@ -71,6 +73,15 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     common_vendor.onLoad(async () => {
       console.log("首先分页获取所有订单信息", orderDTO.value);
       await getOrderPage(0);
+    });
+    common_vendor.onShow(() => {
+      if (typeof page !== "undefined") {
+        page.value = 1;
+      }
+      if (typeof orderList !== "undefined") {
+        orderList.value = [];
+      }
+      getOrderList();
     });
     common_vendor.onReachBottom(() => {
       console.log("Page:", orderDTO.value.page);
@@ -121,6 +132,9 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       console.log("催单", id);
       childComp.value.openPopup();
     };
+    function getOrderList() {
+      throw new Error("Function not implemented.");
+    }
     return (_ctx, _cache) => {
       return {
         a: common_vendor.f(statusOptions, (item, index, i0) => {
@@ -160,5 +174,5 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     };
   }
 });
-const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-73685b36"], ["__file", "D:/MyCode/public_project/hanye-take-out/hanye-take-out-uniapp/src/pages/history/history.vue"]]);
+const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-73685b36"], ["__file", "D:/opgames/waimai/hanye-take-out/hanye-take-out-uniapp/src/pages/history/history.vue"]]);
 wx.createPage(MiniProgramPage);

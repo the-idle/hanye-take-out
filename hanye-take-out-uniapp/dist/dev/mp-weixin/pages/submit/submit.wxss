@@ -700,3 +700,40 @@
   height: 160rpx;
   border-radius: 100%;
 }
+.bottom.data-v-fb87e98c {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 30rpx;
+  /* 调整 padding */
+}
+.bottom .time-label.data-v-fb87e98c {
+  font-weight: bold;
+  color: #333;
+  font-size: 28rpx;
+}
+.bottom .time-select.data-v-fb87e98c {
+  display: flex;
+  align-items: center;
+}
+.bottom .time-select .blue-text.data-v-fb87e98c {
+  color: #00aaff;
+  font-weight: bold;
+  margin-right: 10rpx;
+}
+.bottom .time-select .arrow.data-v-fb87e98c {
+  color: #ccc;
+}
+.time-item.data-v-fb87e98c {
+  padding: 30rpx;
+  border-bottom: 1rpx solid #f5f5f5;
+  display: flex;
+  justify-content: space-between;
+}
+.time-item .active.data-v-fb87e98c {
+  color: #00aaff;
+  font-weight: bold;
+}
+.time-item .check.data-v-fb87e98c {
+  color: #00aaff;
+}

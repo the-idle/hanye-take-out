@@ -6,19 +6,8 @@ require("../../stores/modules/user.js");
 const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
   __name: "addOrEditAddress",
   setup(__props) {
-    let fullLocationCode = ["", "", ""];
-    const pickerChange = (ev) => {
-      console.log(ev);
-      address.value = ev.detail.value.join(" ");
-      console.log(address.value);
-      fullLocationCode = ev.detail.code;
-      console.log(fullLocationCode);
-      form.provinceCode = fullLocationCode[0];
-      form.cityCode = fullLocationCode[1];
-      form.districtCode = fullLocationCode[2];
-    };
-    const platform = common_vendor.ref("ios");
-    const showDel = common_vendor.ref(false);
+    common_vendor.ref("ios");
+    common_vendor.ref(false);
     const items = [
       {
         value: 1,
@@ -44,31 +33,37 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       id: 0,
       consignee: "",
       phone: "",
-      label: "",
+      label: "家",
       gender: 1,
-      provinceCode: "110000",
-      provinceName: "",
-      cityCode: "110100",
-      cityName: "",
-      districtCode: "110102",
+      // 逻辑拆分：
+      provinceName: "已定位",
+      // 默认值，防止后端校验
+      cityName: "已定位",
+      // 默认值
       districtName: "",
-      detail: ""
+      // 【重点】用来存地图选点的“建筑名”
+      detail: "",
+      // 【重点】用来存用户填写的“门牌号”
+      latitude: "",
+      longitude: ""
     });
     common_vendor.ref("");
-    const address = common_vendor.ref("北京市 市辖区 西城区");
-    const delId = common_vendor.ref();
-    common_vendor.onLoad(async (options2) => {
-      init();
-      if (options2 && options2.type === "编辑") {
-        delId.value = -1;
-        showDel.value = true;
-        common_vendor.index.setNavigationBarTitle({
-          title: "编辑收货地址"
-        });
-        delId.value = options2.id;
-        await queryAddressBookById(options2.id);
+    const address = common_vendor.ref("");
+    common_vendor.ref();
+    common_vendor.computed(() => {
+      return form.latitude && form.longitude && address.value;
+    });
+    common_vendor.onLoad(async (opt) => {
+      if (opt.id) {
+        common_vendor.index.setNavigationBarTitle({ title: "修改收货地址" });
+        const res = await api_address.getAddressByIdAPI(opt.id);
+        if (res.code === 1 || res.code === 0) {
+          Object.assign(form, res.data);
+          if (!form.districtName)
+            form.districtName = "";
+        }
       } else {
-        showDel.value = false;
+        common_vendor.index.setNavigationBarTitle({ title: "新增收货地址" });
       }
     });
     common_vendor.onUnload(() => {
@@ -76,170 +71,73 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         key: "edit"
       });
     });
-    const statusBarHeight = () => {
-      return common_vendor.index.getSystemInfoSync().statusBarHeight + "px";
-    };
-    const init = () => {
-      const res = common_vendor.index.getSystemInfoSync();
-      platform.value = res.platform;
-    };
-    const queryAddressBookById = async (id) => {
-      const res = await api_address.getAddressByIdAPI(id);
-      if (res.code === 0) {
-        const newForm = {
-          provinceCode: res.data.provinceCode,
-          cityCode: res.data.cityCode,
-          districtCode: res.data.districtCode,
-          phone: res.data.phone,
-          consignee: res.data.consignee,
-          gender: res.data.gender,
-          label: res.data.label,
-          detail: res.data.detail,
-          id: res.data.id
-        };
-        Object.assign(form, newForm);
-        if (res.data.provinceName && res.data.cityName && res.data.districtName) {
-          address.value = res.data.provinceName + "-" + res.data.cityName + "-" + res.data.districtName;
+    const chooseLocationFromMap = () => {
+      common_vendor.index.chooseLocation({
+        success: (res) => {
+          console.log("选点结果", res);
+          form.latitude = String(res.latitude);
+          form.longitude = String(res.longitude);
+          form.districtName = res.name || res.address;
+          form.provinceName = "已定位";
+          form.cityName = "已定位";
         }
-      }
+      });
     };
-    const getTextOption = (item) => {
-      console.log("点击了标签", item);
-      form.label = item.name;
-    };
-    const sexChangeHandle = (val) => {
-      form.gender = val;
-      console.log(form.gender);
-    };
-    const addAddress = async () => {
-      if (form.consignee === "") {
-        return common_vendor.index.showToast({
-          title: "联系人不能为空",
-          duration: 1e3,
-          icon: "none"
-        });
-      } else if (form.phone === "") {
-        return common_vendor.index.showToast({
-          title: "手机号不能为空",
-          duration: 1e3,
-          icon: "none"
-        });
-      } else if (form.label === "") {
-        return common_vendor.index.showToast({
-          title: "所属标签不能为空",
-          duration: 1e3,
-          icon: "none"
-        });
-      } else if (address.value === "") {
-        return common_vendor.index.showToast({
-          title: "所在地区不能为空",
-          duration: 1e3,
-          icon: "none"
-        });
+    const saveAddress = async () => {
+      if (!form.consignee)
+        return common_vendor.index.showToast({ title: "请填写联系人", icon: "none" });
+      if (!form.phone)
+        return common_vendor.index.showToast({ title: "请填写手机号", icon: "none" });
+      if (!/^1[3-9]\d{9}$/.test(form.phone))
+        return common_vendor.index.showToast({ title: "手机号格式错误", icon: "none" });
+      if (!form.districtName || form.districtName === "已定位") {
+        return common_vendor.index.showToast({ title: "请点击选择收货地址", icon: "none" });
       }
-      if (form.phone) {
-        const reg = /^(13[0-9]|14[01456879]|15[0-35-9]|16[2567]|17[0-8]|18[0-9]|19[0-35-9])\d{8}$/;
-        if (!reg.test(form.phone)) {
-          return common_vendor.index.showToast({
-            title: "手机号输入有误",
-            duration: 1e3,
-            icon: "none"
-          });
-        }
+      if (!form.detail) {
+        return common_vendor.index.showToast({ title: "请填写门牌号", icon: "none" });
       }
-      const params = {
-        ...form,
-        provinceName: address.value.split(" ")[0],
-        cityName: address.value.split(" ")[1],
-        districtName: address.value.split(" ")[2]
-      };
-      if (showDel.value) {
-        console.log("update params !!!", params);
-        const res = await api_address.updateAddressAPI(params);
-        if (res.code === 0) {
-          common_vendor.index.redirectTo({
-            url: "/pages/address/address"
-          });
-        }
+      const api = form.id ? api_address.updateAddressAPI : api_address.addAddressAPI;
+      const res = await api(form);
+      if (res.code === 1 || res.code === 0) {
+        common_vendor.index.showToast({ title: "保存成功" });
+        setTimeout(() => common_vendor.index.navigateBack(), 800);
       } else {
-        delete params.id;
-        console.log("add params with label!", params);
-        const res = await api_address.addAddressAPI(params);
-        if (res.code === 0) {
-          common_vendor.index.redirectTo({
-            url: "/pages/address/address"
-          });
-        }
-      }
-    };
-    const deleteAddress = async () => {
-      if (delId.value === -1 || !delId.value) {
-        return common_vendor.index.showToast({
-          title: "删除失败",
-          duration: 1e3,
-          icon: "none"
-        });
-      }
-      const res = await api_address.deleteAddressAPI(delId.value);
-      if (res.code === 0) {
-        common_vendor.index.redirectTo({
-          url: "/pages/address/address"
-        });
-        common_vendor.index.showToast({
-          title: "地址删除成功",
-          duration: 1e3,
-          icon: "none"
-        });
-        form.consignee = "";
-        form.phone = "";
-        form.label = "";
-        form.provinceCode = "110000";
-        form.cityCode = "110100";
-        form.districtCode = "110102";
+        common_vendor.index.showToast({ title: res.msg || "保存失败", icon: "none" });
       }
     };
     return (_ctx, _cache) => {
-      var _a;
       return common_vendor.e({
         a: form.consignee,
         b: common_vendor.o(($event) => form.consignee = $event.detail.value),
         c: common_vendor.f(items, (item, index, i0) => {
-          return common_vendor.e({
-            a: item.value != form.gender
-          }, item.value != form.gender ? {} : {}, {
-            b: common_vendor.t(item.name),
+          return {
+            a: common_vendor.t(item.name),
+            b: form.gender === item.value ? 1 : "",
             c: index,
-            d: common_vendor.o(($event) => sexChangeHandle(item.value), index)
-          });
+            d: common_vendor.o(($event) => form.gender = item.value, index)
+          };
         }),
         d: form.phone,
         e: common_vendor.o(($event) => form.phone = $event.detail.value),
-        f: address.value
-      }, address.value ? {
-        g: common_vendor.t(address.value)
+        f: form.districtName && form.districtName !== "已定位"
+      }, form.districtName && form.districtName !== "已定位" ? {
+        g: common_vendor.t(form.districtName)
       } : {}, {
-        h: common_vendor.o(pickerChange),
-        i: (_a = address.value) == null ? void 0 : _a.split(" "),
-        j: platform.value == "ios" ? 1 : "",
-        k: form.detail,
-        l: common_vendor.o(($event) => form.detail = $event.detail.value),
-        m: common_vendor.f(options, (item, k0, i0) => {
+        h: common_vendor.o(chooseLocationFromMap),
+        i: form.detail,
+        j: common_vendor.o(($event) => form.detail = $event.detail.value),
+        k: common_vendor.f(options, (item, k0, i0) => {
           return {
             a: common_vendor.t(item.name),
             b: form.label === item.name ? 1 : "",
             c: item.name,
-            d: common_vendor.o(($event) => getTextOption(item), item.name)
+            d: common_vendor.o(($event) => form.label = item.name, item.name)
           };
         }),
-        n: common_vendor.o(($event) => addAddress()),
-        o: showDel.value
-      }, showDel.value ? {
-        p: common_vendor.o(($event) => deleteAddress())
-      } : {}, {
-        q: `calc(100% - ${statusBarHeight} - 44px)`
+        l: common_vendor.o(saveAddress)
       });
     };
   }
 });
-const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-06210029"], ["__file", "D:/MyCode/public_project/hanye-take-out/hanye-take-out-uniapp/src/pages/addOrEditAddress/addOrEditAddress.vue"]]);
+const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-06210029"], ["__file", "D:/opgames/waimai/hanye-take-out/hanye-take-out-uniapp/src/pages/addOrEditAddress/addOrEditAddress.vue"]]);
 wx.createPage(MiniProgramPage);

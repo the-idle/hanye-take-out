@@ -15,6 +15,22 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
   __name: "order",
   setup(__props) {
     const status = common_vendor.ref(true);
+    const shopConfig = common_vendor.ref({
+      id: 1,
+      name: "",
+      address: "",
+      latitude: "",
+      longitude: "",
+      phone: "",
+      deliveryFee: 0,
+      deliveryStatus: 1,
+      packFee: 0,
+      packStatus: 1,
+      minOrderAmount: 0,
+      openingHours: "",
+      notice: "",
+      autoAccept: 0
+    });
     const categoryList = common_vendor.ref([]);
     const activeIndex = common_vendor.ref(0);
     common_vendor.ref(0);
@@ -47,12 +63,31 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       console.log(res);
       dishList.value = res.data;
     };
+    const getShopData = async () => {
+      try {
+        const res = await api_shop.getShopConfigAPI();
+        if (res.code === 0 || res.code === 1) {
+          shopConfig.value = res.data;
+        }
+      } catch (e) {
+        console.error("获取店铺配置失败", e);
+      }
+    };
     const getCartList = async () => {
       const res = await api_cart.getCartAPI();
       console.log("初始化购物车列表", res);
       cartList.value = res.data;
       CartAllNumber.value = cartList.value.reduce((acc, cur) => acc + cur.number, 0);
-      CartAllPrice.value = cartList.value.reduce((acc, cur) => acc + cur.amount * cur.number, 0);
+      const goodsPrice = cartList.value.reduce((acc, cur) => acc + cur.amount * cur.number, 0);
+      let packPrice = 0;
+      if (shopConfig.value.packStatus === 1) {
+        packPrice = CartAllNumber.value * Number(shopConfig.value.packFee);
+      }
+      let deliveryPrice = 0;
+      if (shopConfig.value.deliveryStatus === 1) {
+        deliveryPrice = Number(shopConfig.value.deliveryFee);
+      }
+      CartAllPrice.value = goodsPrice + packPrice + deliveryPrice;
       console.log("CartAllNumber", CartAllNumber.value);
       console.log("CartAllPrice", CartAllPrice.value);
       if (cartList.value.length === 0) {
@@ -172,18 +207,35 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       openCartList.value = false;
     };
     const submitOrder = () => {
+      if (!status.value) {
+        common_vendor.index.showToast({
+          title: "店铺已打烊，无法下单",
+          icon: "none"
+        });
+        return;
+      }
+      if (CartAllPrice.value < shopConfig.value.minOrderAmount) {
+        return;
+      }
       console.log("submitOrder");
       common_vendor.index.navigateTo({
         url: "/pages/submit/submit"
       });
     };
-    const goBack = () => {
-      common_vendor.index.switchTab({ url: "/pages/index/index" });
-    };
     common_vendor.onLoad(async () => {
-      const res = await api_shop.getStatusAPI();
-      console.log("店铺状态---------", res);
-      status.value = res.data === 1 ? true : false;
+      try {
+        const res = await api_shop.getStatusAPI();
+        console.log("店铺状态---------", res);
+        if (res.data && res.data === 1) {
+          status.value = true;
+        } else {
+          status.value = false;
+        }
+      } catch (e) {
+        console.error(e);
+        status.value = true;
+      }
+      await getShopData();
       await getCategoryData();
       await getDishOrSetmealList(0);
       await getCartList();
@@ -194,7 +246,11 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     });
     return (_ctx, _cache) => {
       return common_vendor.e({
-        a: common_vendor.f(categoryList.value, (item, index, i0) => {
+        a: common_vendor.p({
+          status: status.value,
+          shopConfig: shopConfig.value
+        }),
+        b: common_vendor.f(categoryList.value, (item, index, i0) => {
           return {
             a: common_vendor.t(item.name),
             b: item.id,
@@ -202,7 +258,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             d: common_vendor.o(($event) => getDishOrSetmealList(index), item.id)
           };
         }),
-        b: common_vendor.f(dishList.value, (dish, k0, i0) => {
+        c: common_vendor.f(dishList.value, (dish, k0, i0) => {
           return common_vendor.e({
             a: dish.pic,
             b: common_vendor.t(dish.name),
@@ -226,7 +282,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             m: `/pages/detail/detail?${categoryList.value[activeIndex.value].sort < 20 ? "dishId" : "setmealId"}=${dish.id}`
           });
         }),
-        c: common_vendor.f(flavors.value, (flavor, k0, i0) => {
+        d: common_vendor.f(flavors.value, (flavor, k0, i0) => {
           return {
             a: common_vendor.t(flavor.name),
             b: common_vendor.f(JSON.parse(flavor.list), (item, index, i1) => {
@@ -240,18 +296,22 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             c: flavor.name
           };
         }),
-        d: common_vendor.o(($event) => addToCart(dialogDish.value)),
-        e: common_vendor.o(($event) => visible.value = false),
-        f: visible.value,
-        g: cartList.value.length === 0
-      }, cartList.value.length === 0 ? {} : {
-        h: common_vendor.t(CartAllNumber.value),
-        i: common_vendor.t(parseFloat((Math.round(CartAllPrice.value * 100) / 100).toFixed(2))),
-        j: common_vendor.o(($event) => submitOrder()),
-        k: common_vendor.o(() => openCartList.value = !openCartList.value)
+        e: common_vendor.o(($event) => addToCart(dialogDish.value)),
+        f: common_vendor.o(($event) => visible.value = false),
+        g: visible.value,
+        h: cartList.value.length === 0
+      }, cartList.value.length === 0 ? {
+        i: common_vendor.t(shopConfig.value.minOrderAmount || 0)
+      } : {
+        j: common_vendor.t(CartAllNumber.value),
+        k: common_vendor.t(parseFloat((Math.round(CartAllPrice.value * 100) / 100).toFixed(2))),
+        l: common_vendor.t(CartAllPrice.value >= shopConfig.value.minOrderAmount ? "去结算" : `差￥${(shopConfig.value.minOrderAmount - CartAllPrice.value).toFixed(1)}起送`),
+        m: CartAllPrice.value < shopConfig.value.minOrderAmount ? 1 : "",
+        n: common_vendor.o(($event) => submitOrder()),
+        o: common_vendor.o(() => openCartList.value = !openCartList.value)
       }, {
-        l: common_vendor.o(($event) => clearCart()),
-        m: common_vendor.f(cartList.value, (obj, index, i0) => {
+        p: common_vendor.o(($event) => clearCart()),
+        q: common_vendor.f(cartList.value, (obj, index, i0) => {
           return common_vendor.e({
             a: obj.pic,
             b: common_vendor.t(obj.name),
@@ -269,14 +329,12 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             j: index
           });
         }),
-        n: common_vendor.o(($event) => openCartList.value = openCartList.value),
-        o: openCartList.value,
-        p: common_vendor.o(($event) => openCartList.value = !openCartList.value),
-        q: !status.value,
-        r: common_vendor.o(goBack)
+        r: common_vendor.o(($event) => openCartList.value = openCartList.value),
+        s: openCartList.value,
+        t: common_vendor.o(($event) => openCartList.value = !openCartList.value)
       });
     };
   }
 });
-const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-88bf5328"], ["__file", "D:/MyCode/public_project/hanye-take-out/hanye-take-out-uniapp/src/pages/order/order.vue"]]);
+const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-88bf5328"], ["__file", "D:/opgames/waimai/hanye-take-out/hanye-take-out-uniapp/src/pages/order/order.vue"]]);
 wx.createPage(MiniProgramPage);

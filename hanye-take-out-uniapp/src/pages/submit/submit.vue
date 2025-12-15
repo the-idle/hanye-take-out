@@ -3,29 +3,42 @@
     <scroll-view class="order_content_box" scroll-y scroll-top="0rpx">
       <!-- 地址栏 -->
       <view class="new_address">
-        <!-- 上部 -->
+        <!-- 上部：点击跳转地址选择 -->
         <view class="top" @click="goAddress">
-          <view v-if="!address" class="address_name_disabled"> 请选择收货地址 </view>
-          <view v-if="address" class="address_name">
+          <!-- 情况1：没有地址ID时显示提示 -->
+          <view v-if="!addressId" class="address_name_disabled"> 请选择收货地址 </view>
+          
+          <!-- 情况2：有地址ID时显示详情 -->
+          <view v-else class="address_name">
             <view class="address">
-              <text class="tag" :class="'tag' + trans(label as string)"> {{ label || '其他' }} </text>
-              <text class="word">{{ address }}</text>
+              <!-- 标签 -->
+              <text class="tag" v-if="label" :class="'tag' + trans(label)"> {{ label }} </text>
+              <!-- 核心：显示计算后的地址字符串 -->
+              <text class="word">{{ detailAddressStr }}</text>
             </view>
             <view class="name">
               <text class="name_1">{{ consignee }}</text>
               <text class="name_2">{{ phoneNumber }}</text>
             </view>
           </view>
+          
+          <!-- 右侧箭头图标 -->
           <view class="address_image">
             <image class="to_right" src="../../static/icon/toRight.png"></image>
           </view>
         </view>
-        <!-- 下部 -->
-        <view class="bottom">
-          <text class="word_bottom">预计{{ arrivalTime }}送达</text>
-        </view>
+
+        <!-- 下部：送达时间 -->
+<view class="bottom" @click="openTimePicker">
+  <view class="time-label">送达时间</view>
+  <view class="time-select">
+    <text class="blue-text">{{ selectedTimeLabel }}</text>
+    <text class="arrow">></text>
+  </view>
+</view>
       </view>
-      <!-- 两个白框栏 -->
+
+      <!-- 订单内容区 -->
       <view class="order_list_cont">
         <!-- 1、订单菜品列表 -->
         <view class="order_list">
@@ -35,7 +48,7 @@
           <view class="order-type">
             <view class="type_item" v-for="(obj, index) in cartList" :key="index">
               <view class="dish_img">
-                <image mode="aspectFill" :src="obj.pic" class="dish_img_url"></image>
+                <image mode="aspectFill" :src="obj.pic ? obj.pic : '/static/default_dish.png'" class="dish_img_url"></image>
               </view>
               <view class="dish_info">
                 <view class="dish_name"> {{ obj.name }} </view>
@@ -48,17 +61,18 @@
             </view>
             <view class="word_text">
               <view class="word_left">打包费</view>
-              <view class="word_right">￥{{ CartAllNumber }}</view>
+              <view class="word_right">￥{{ packTotalPrice }}</view>
             </view>
             <view class="word_text">
               <view class="word_left">配送费</view>
-              <view class="word_right">￥6</view>
+              <view class="word_right">￥{{ deliveryTotalPrice }}</view>
             </view>
             <view class="all_price">
               <text class="word_right">总价 ￥{{ CartAllPrice }}</text>
             </view>
           </view>
         </view>
+        
         <!-- 2、备注+餐具份数+发票 -->
         <view class="order_list">
           <view class="bottom_text" @click="goRemark">
@@ -83,6 +97,7 @@
       </view>
       <view class="blank"></view>
     </scroll-view>
+
     <!-- 底部购物车 -->
     <view class="footer_order_buttom order_form">
       <view class="order_number">
@@ -126,6 +141,24 @@
         </view>
       </view>
     </view>
+	<view class="pop_mask" v-show="showTimePopup" @click="showTimePopup = false">
+	  <view class="cook_pop" @click.stop>
+	    <view class="top_title">
+	      <view class="title">选择送达时间</view>
+	    </view>
+	    <scroll-view scroll-y style="height: 500rpx;">
+	      <view 
+	        class="time-item" 
+	        v-for="(item, index) in timeSlots" 
+	        :key="index"
+	        @click="selectTime(item)"
+	      >
+	        <text :class="{ active: selectedTimeLabel === item }">{{ item }}</text>
+	        <text v-if="selectedTimeLabel === item" class="check">✔</text>
+	      </view>
+	    </scroll-view>
+	  </view>
+	</view>
   </view>
 </template>
 
@@ -133,10 +166,12 @@
 import {getDefaultAddressAPI} from '@/api/address'
 import {getCartAPI} from '@/api/cart'
 import {submitOrderAPI, getUnPayOrderAPI} from '@/api/order'
+import {getShopConfigAPI} from '@/api/shop'
 import type {CartItem} from '@/types/cart'
+import type {ShopConfig} from '@/types/shop'
 import {useAddressStore} from '@/stores/modules/address'
 import {onLoad, onShow} from '@dcloudio/uni-app'
-import {ref} from 'vue'
+import {ref, computed} from 'vue'
 
 // store
 const store = useAddressStore()
@@ -146,73 +181,214 @@ const cartList = ref<CartItem[]>([])
 const CartAllNumber = ref(0)
 const CartAllPrice = ref(0)
 
-// 收货地址信息，如果有选择好后跳回来，则在路径参数里拿到这个address地址信息
+// 店铺配置
+const shopConfig = ref<ShopConfig>({
+  id: 1,
+  name: '',
+  address: '',
+  latitude: '',
+  longitude: '',
+  phone: '',
+  deliveryFee: 0,
+  deliveryStatus: 1,
+  packFee: 0,
+  packStatus: 1,
+  minOrderAmount: 0,
+  openingHours: '',
+  notice: '',
+  autoAccept: 0,
+})
+
+// 收货地址信息
 const address = ref('')
 const label = ref('')
 const consignee = ref('')
-const gender = ref(0)
 const phoneNumber = ref('')
 
 // 预计送达时间
-const estimatedDeliveryTime = ref('')
+const arrivalTime = ref('')
+// --- 时间相关变量 ---
+const showTimePopup = ref(false)
+const selectedTimeLabel = ref('立即送出')
+const timeSlots = ref<string[]>([])
+const estimatedDeliveryTime = ref('') // 最终传给后端的格式
+
+// 用于显示的地址详情对象 (省市区+门牌号)
+const selectedAddrObj = ref<any>({})
+const addressId = ref(0)
+
+// 生成时间段逻辑 (当前时间往后推，每15分钟一个格)
+const generateTimeSlots = () => {
+  const slots = ['立即送出']
+  const now = new Date()
+  // 从当前时间+30分钟开始算，每15分钟一档
+  let start = new Date(now.getTime() + 30 * 60000)
+  // 取整到15分刻度
+  const remainder = start.getMinutes() % 15
+  start.setMinutes(start.getMinutes() + (15 - remainder))
+  
+  // 生成直到晚上23:00的时间段
+  while (start.getHours() < 23) {
+    const h = start.getHours().toString().padStart(2, '0')
+    const m = start.getMinutes().toString().padStart(2, '0')
+    slots.push(`${h}:${m}`)
+    start.setMinutes(start.getMinutes() + 15)
+  }
+  timeSlots.value = slots
+}
+// 打开弹窗
+const openTimePicker = () => {
+  generateTimeSlots()
+  showTimePopup.value = true
+}
+// 选中时间
+const selectTime = (timeStr: string) => {
+  selectedTimeLabel.value = timeStr
+  showTimePopup.value = false
+  
+  // 计算传给后端的实际时间格式 (yyyy-MM-dd HH:mm:ss)
+  const now = new Date()
+  if (timeStr === '立即送出') {
+    // 立即送出 = 当前时间 + 45分钟(大概)
+    now.setTime(now.getTime() + 45 * 60000)
+  } else {
+    // 选中了具体时间，如 12:30
+    const [h, m] = timeStr.split(':')
+    now.setHours(Number(h))
+    now.setMinutes(Number(m))
+  }
+  // 转成 ISO 格式或其他后端能认的格式
+  estimatedDeliveryTime.value = DateToStr(now) 
+}
+
+
+// 【核心修复】计算属性：自动处理“已定位”垃圾文字
+const detailAddressStr = computed(() => {
+    if (!addressId.value) return ''
+    const addr = selectedAddrObj.value
+    // 过滤 '已定位' 占位符
+    const p = (!addr.provinceName || addr.provinceName === '已定位') ? '' : addr.provinceName
+    const c = (!addr.cityName || addr.cityName === '已定位') ? '' : addr.cityName
+    const d = (!addr.districtName || addr.districtName === '已定位') ? '' : addr.districtName
+    const detail = addr.detail || ''
+    // 返回：建筑名 + 门牌号
+    return `${p}${c}${d} ${detail}`.trim()
+})
 
 const platform = ref('ios')
-
 const openCooker = ref(false)
 const cookerNum = ref(-2)
 const cookers = ref([-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
-
 const radioStatus = ref(false)
-
 const remark = ref('')
-const arrivalTime = ref('')
-const addressId = ref(0)
+
 
 // 查询获取购物车列表
 const getCartList = async () => {
+  // 1. 先获取店铺配置（获取最新的费用标准）
+  try {
+    const configRes = await getShopConfigAPI()
+    if (configRes.code === 0 || configRes.code === 1) {
+      shopConfig.value = configRes.data
+    }
+  } catch (e) {
+    console.error('获取店铺配置失败', e)
+  }
+
+  // 2. 获取购物车
   const res = await getCartAPI()
-  console.log('初始化购物车列表', res)
-  cartList.value = res.data
-  // 计算总数量
-  CartAllNumber.value = cartList.value.reduce((acc, cur) => acc + cur.number, 0)
-  // 计算总价格 = 菜品总价 + 打包费 + 配送费
-  CartAllPrice.value = cartList.value.reduce((acc, cur) => acc + cur.amount * cur.number, 0) + CartAllNumber.value + 6
-  console.log('CartAllNumber', CartAllNumber.value)
-  console.log('CartAllPrice', CartAllPrice.value)
+  // console.log('初始化购物车列表', res)
+  if(res.data) {
+    cartList.value = res.data
+    
+    // 计算商品总数量
+    CartAllNumber.value = cartList.value.reduce((acc, cur) => acc + cur.number, 0)
+    
+    // ---【核心计算逻辑修改】---
+    
+    // 1. 计算纯菜品总价
+    const goodsPrice = cartList.value.reduce((acc, cur) => acc + cur.amount * cur.number, 0)
+    
+    // 2. 计算打包费（如果开启）
+    let packPrice = 0
+    if (shopConfig.value.packStatus === 1) {
+      packPrice = CartAllNumber.value * Number(shopConfig.value.packFee)
+    }
+    
+    // 3. 计算配送费（如果开启）
+    let deliveryPrice = 0
+    if (shopConfig.value.deliveryStatus === 1) {
+      deliveryPrice = Number(shopConfig.value.deliveryFee)
+    }
+    
+    // 4. 总价 = 菜品 + 打包 + 配送
+    CartAllPrice.value = goodsPrice + packPrice + deliveryPrice
+  }
 }
 
-onLoad(async (options: any) => {
-  // 先加载默认地址(如果有的话)
-  await getAddressBookDefault()
-  // 再看看路径参数有没有传过来的地址，有的话以这个地址为准
-  console.log('options', options)
-  if (options.address) {
-    const addressObj = JSON.parse(options.address)
-    console.log('获取新的地址啊！addressObj', addressObj)
-    addressId.value = addressObj.id
-    label.value = addressObj.label
-    address.value = addressObj.provinceName + addressObj.cityName + addressObj.districtName + addressObj.detail
-    phoneNumber.value = addressObj.phone
-    consignee.value = addressObj.consignee
-  } else if (options.remark) {
-    remark.value = options.remark
+// 计算打包费总额（用于显示）
+const packTotalPrice = computed(() => {
+  if (shopConfig.value.packStatus === 1) {
+    return (CartAllNumber.value * Number(shopConfig.value.packFee)).toFixed(2)
   }
-  console.log('我地址id赋值了啊1-------------', addressId.value)
-  // 获取购物车列表
-  await getCartList()
-  // 获取一小时以后的时间，作为预计送达的时间
-  getHarfAnOur()
-  // 默认选择的餐具状态
-  if (store.defaultCook === '无需餐具') {
-    cookerNum.value = -1
-  } else if (store.defaultCook === '商家依据餐量提供') {
-    cookerNum.value = 0
-  }
+  return '0.00'
 })
 
-onShow(async (options: any) => {
-  console.log('options', options)
-  await getCartList()
+// 计算配送费（用于显示）
+const deliveryTotalPrice = computed(() => {
+  if (shopConfig.value.deliveryStatus === 1) {
+    return Number(shopConfig.value.deliveryFee).toFixed(2)
+  }
+  return '0.00'
+})
+
+// 【修复逻辑】onLoad 只负责初始化和接收参数
+onLoad(async (options: any) => {
+    // ... 购物车和地址逻辑 ...
+    await getCartList()
+    getHarfAnOur()
+    // ...
+
+    // 【核心修复】读取餐具默认配置
+    // 假设缓存里存的是：0 (商家提供) 或 -1 (无需)
+    const defaultCooker = uni.getStorageSync('default_cooker_type')
+    
+    // 如果缓存有值 (注意 0 也是值，不能简单的 if(defaultCooker))
+    if (defaultCooker !== '' && defaultCooker !== null && defaultCooker !== undefined) {
+        cookerNum.value = Number(defaultCooker) // 设置当前选择
+        radioStatus.value = true // 自动勾选“以后都需要”
+    } else {
+        // 没有缓存，默认未选择
+        cookerNum.value = -2 
+        radioStatus.value = false
+    }
+})
+
+// 【修复逻辑】onShow 负责处理地址回显（缓存优先）
+onShow(async () => {
+
+	
+    // 1. 检查是否有从地址页带回来的缓存地址
+    const cacheAddr = uni.getStorageSync('select_address')
+    if (cacheAddr) {
+        fillAddress(cacheAddr)
+        uni.removeStorageSync('select_address') // 选完即删，防止重复读取
+    } else {
+        // 2. 如果没有缓存且当前页面也没有地址ID（首次进入），才加载默认地址
+        if (!addressId.value) {
+            await getAddressBookDefault()
+        }
+    }
+	// 3. 【核心修复】检查是否有备注缓存 (从备注页回来)
+	const cacheRemark = uni.getStorageSync('order_remark')
+	if (cacheRemark) {
+		remark.value = cacheRemark // 把缓存里的备注赋值给页面的变量
+		uni.removeStorageSync('order_remark') // 读完就删，防止影响下次
+		console.log('读取到备注:', remark.value) // 调试日志
+	}
+		
+    // 3. 刷新购物车（防止在其他页面修改了）
+    await getCartList()
 })
 
 // 初始化平台：ios/android
@@ -223,25 +399,13 @@ const initPlatform = () => {
 
 // 日期转字符串格式
 const DateToStr = (date: Date) => {
-  var year = date.getFullYear() //年
-  var month = date.getMonth() //月
-  var day = date.getDate() //日
-  var hours = date.getHours() //时
-  var min = date.getMinutes() //分
-  var second = date.getSeconds() //秒
-  return (
-    year +
-    '-' +
-    (month + 1 > 9 ? month + 1 : '0' + (month + 1)) +
-    '-' +
-    (day > 9 ? day : '0' + day) +
-    ' ' +
-    (hours > 9 ? hours : '0' + hours) +
-    ':' +
-    (min > 9 ? min : '0' + min) +
-    ':' +
-    (second > 9 ? second : '0' + second)
-  )
+  const year = date.getFullYear()
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const day = date.getDate().toString().padStart(2, '0')
+  const hours = date.getHours().toString().padStart(2, '0')
+  const min = date.getMinutes().toString().padStart(2, '0')
+  const second = date.getSeconds().toString().padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${min}:${second}`
 }
 // 获取一小时以后的时间
 const getHarfAnOur = () => {
@@ -257,52 +421,41 @@ const getHarfAnOur = () => {
 }
 // 默认地址查询
 const getAddressBookDefault = async () => {
-  const res = await getDefaultAddressAPI()
-  if (res.code === 0) {
-    console.log('默认地址', res.data)
-    addressId.value = 0
-    if (res.data.provinceName) {
-      address.value = res.data.provinceName + res.data.cityName + res.data.districtName + res.data.detail
+    const res = await getDefaultAddressAPI()
+    if (res.code === 0 && res.data) {
+        fillAddress(res.data)
     }
-    phoneNumber.value = res.data.phone as string
-    consignee.value = res.data.consignee as string
-    gender.value = res.data.gender as number
-    addressId.value = res.data.id as number
-  }
 }
 
 // 标签文字转数字
 const trans = (item: string) => {
-  switch (item) {
-    case '公司':
-      return '1'
-    case '家':
-      return '2'
-    case '学校':
-      return '3'
-    default:
-      return '4'
-  }
+  if(item === '公司') return '1'
+  if(item === '家') return '2'
+  if(item === '学校') return '3'
+  return '4'
 }
 
 // 去地址页面
 const goAddress = () => {
-  // 记录等下跳转到地址管理后，选好地址要返回当前这个订单页面
   store.addressBackUrl = '/pages/submit/submit'
-  uni.redirectTo({
-    url: '/pages/address/address',
+  uni.navigateTo({
+    url: '/pages/address/address?from=order'
   })
 }
 
 // 去备注页面
 const goRemark = () => {
-  uni.redirectTo({
-    url: '/pages/remark/remark',
+  uni.navigateTo({
+    url: `/pages/remark/remark?remark=${remark.value}`
   })
 }
-// 选择餐具
+// --- 餐具逻辑 ---
 const chooseCooker = () => {
   openCooker.value = true
+  // 打开时，如果当前是“未选择”，给个默认引导到“商家提供”
+  if (cookerNum.value === -2) {
+      cookerNum.value = 0
+  }
 }
 // 餐具对应信息
 const getCookerInfo = () => {
@@ -313,87 +466,89 @@ const getCookerInfo = () => {
   else return cookerNum.value + '份'
 }
 const pickerChange = (ev: any) => {
-  console.log(ev.detail.value)
-  cookerNum.value = ev.detail.value[0] - 1
+  const index = ev.detail.value[0]
+  const selectedVal = cookers.value[index]
+  
+  cookerNum.value = selectedVal
+  
+  // 【关键】如果当前“记住偏好”是勾选的，每次滚动改变都要更新缓存
+  if (radioStatus.value) {
+      uni.setStorageSync('default_cooker_type', selectedVal)
+  }
 }
-// 改变radio状态，顺便改变store里默认餐具选择的状态
+// 改变radio状态
 const radioChange = () => {
   radioStatus.value = !radioStatus.value
+  
   if (radioStatus.value) {
-    store.defaultCook = cookerNum.value === -1 ? '无需餐具' : '商家依据餐量提供'
+    // A. 勾选了：保存当前的选择到缓存
+    // 如果当前还没选(是-2)，强制设为 0 (商家依据餐量)
+    if (cookerNum.value === -2) {
+        cookerNum.value = 0
+    }
+    // 保存到本地缓存 (持久化)
+    uni.setStorageSync('default_cooker_type', cookerNum.value)
+    uni.showToast({ title: '已记住您的偏好', icon: 'none' })
   } else {
-    store.defaultCook = '请依据实际情况填写，避免浪费'
+    // B. 取消勾选：清除缓存
+    uni.removeStorageSync('default_cooker_type')
   }
 }
 const closeMask = () => {
   openCooker.value = false
-  // openPayType.value = false
 }
 
 // 支付下单
 const payOrderHandle = async () => {
-  // 先去后端查询一下是否有未支付但没取消的订单，如果有的话无法下单
-  const unPayRes = await getUnPayOrderAPI()
-  console.log('未支付订单', unPayRes)
-  if (unPayRes.data !== 0) {
-    console.log('有未支付订单', unPayRes.data)
-    uni.showToast({
-      title: '有未支付订单，请先支付或取消！',
-      icon: 'none',
-    })
-    return false
-  }
-  if (!address.value) {
-    uni.showToast({
-      title: '请选择收货地址',
-      icon: 'none',
-    })
-    return false
-  }
-  // 餐具： -2未选择，-1无需餐具，0商家依据餐量提供，其他数字具体数量
-  if (cookerNum.value === -2) {
-    uni.showToast({
-      title: '请选择餐具份数',
-      icon: 'none',
-    })
-    return false
-  }
-  console.log('我传地址id了啊2--------------', addressId.value)
-  const params = {
-    payMethod: 1,
-    addressId: addressId.value,
-    remark: remark.value,
-    estimatedDeliveryTime: estimatedDeliveryTime.value, // 预计到达时间
-    deliveryStatus: 1, // 立即送出
-    tablewareNumber: cookerNum.value, // 餐具份数
-    tablewareStatus: cookerNum.value === 0 ? 1 : 0, // 餐具状态: 1按餐量提供，0选择具体数量
-    packAmount: CartAllNumber.value,
-    amount: CartAllPrice.value,
-  }
-  console.log('生成订单params', params)
-  const res = await submitOrderAPI(params)
-  if (res.code === 0) {
-    console.log('订单生成成功', res.data)
-    // 此时订单已生成，跳转到支付页面
-    // uni.navigateTo({url: '/pages/order/success'})
-    uni.redirectTo({
-      url:
-        '/pages/pay/pay?' +
-        'orderId=' +
-        res.data!.id +
-        '&orderAmount=' +
-        res.data!.orderAmount +
-        '&orderNumber=' +
-        res.data!.orderNumber +
-        '&orderTime=' +
-        res.data!.orderTime,
-    })
-  } else {
-    uni.showToast({
-      title: res.msg || '操作失败',
-      icon: 'none',
-    })
-  }
+    // 1. 检查未支付订单
+    const unPayRes = await getUnPayOrderAPI()
+    if (unPayRes.data !== 0) {
+        return uni.showToast({title: '有未支付订单，请先处理！', icon: 'none'})
+    }
+    
+    // 2. 检查地址
+    if (!addressId.value) {
+        return uni.showToast({title: '请选择收货地址', icon: 'none'})
+    }
+
+    // 3. 检查餐具
+    if (cookerNum.value === -2) {
+         return uni.showToast({title: '请选择餐具份数', icon: 'none'})
+    }
+
+    const params = {
+        payMethod: 1,
+        addressId: addressId.value,
+        remark: remark.value,
+		deliveryStatus: selectedTimeLabel.value === '立即送出' ? 1 : 0, 
+		estimatedDeliveryTime: estimatedDeliveryTime.value,
+        tablewareNumber: cookerNum.value,
+        tablewareStatus: cookerNum.value === 0 ? 1 : 0,
+        packAmount: CartAllNumber.value,
+        amount: CartAllPrice.value,
+    }
+	console.log('提交订单参数:', JSON.stringify(params, null, 2)) 
+
+    const res = await submitOrderAPI(params)
+    if (res.code === 0 || res.code === 1) {
+        // 跳转支付
+        uni.redirectTo({
+             url: `/pages/pay/pay?orderId=${res.data.id}&orderAmount=${res.data.orderAmount}&orderNumber=${res.data.orderNumber}&orderTime=${res.data.orderTime}`
+        })
+    } else {
+        uni.showToast({title: res.msg || '下单失败', icon: 'none'})
+    }
+}
+
+
+// 统一填充地址的方法
+const fillAddress = (addr: any) => {
+    if (!addr) return
+    addressId.value = addr.id
+    consignee.value = addr.consignee
+    phoneNumber.value = addr.phone
+    label.value = addr.label
+    selectedAddrObj.value = addr // 保存整个对象用于 computed 计算显示
 }
 </script>
 
@@ -1172,5 +1327,27 @@ const payOrderHandle = async () => {
     height: 160rpx;
     border-radius: 100%;
   }
+}
+.bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 30rpx; /* 调整 padding */
+  .time-label { font-weight: bold; color: #333; font-size: 28rpx; }
+  .time-select {
+    display: flex;
+    align-items: center;
+    .blue-text { color: #00aaff; font-weight: bold; margin-right: 10rpx; }
+    .arrow { color: #ccc; }
+  }
+}
+
+.time-item {
+  padding: 30rpx;
+  border-bottom: 1rpx solid #f5f5f5;
+  display: flex;
+  justify-content: space-between;
+  .active { color: #00aaff; font-weight: bold; }
+  .check { color: #00aaff; }
 }
 </style>

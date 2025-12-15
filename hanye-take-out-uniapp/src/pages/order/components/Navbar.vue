@@ -1,159 +1,120 @@
 <template>
-  <!-- 20250428更新：顶部占位，不受下方滚动影响 -->
-  <view class="navbar-fixed">
-    <!-- 蓝色背景打底 -->
+  <view class="navbar-wrap">
+    <!-- 蓝色背景 -->
     <view class="navbar" :style="{paddingTop: safeAreaInsets?.top + 'px'}">
-      <!-- logo文字 -->
       <view class="logo">
-        <image class="back" src="@/static/icon/back.png" @tap="back"></image>
-        <image class="brand" src="@/static/images/logo.png"></image>
-        <text class="logo-text">REVERSE · 启动</text>
-      </view>
-      <view class="logo">
-        <text class="logo-text"></text>
+        <!-- 如果没有logo图，可以用文字代替，或者保留你原有的image -->
+        <text class="logo-text">寒夜外卖 · 启动</text>
       </view>
     </view>
-    <!-- 餐厅简介 -->
+    
+    <!-- 餐厅信息卡片 -->
     <view class="info">
-      <view class="info1">
-        <view class="status">{{ status === true ? '营业中' : '打烊中' }}</view>
-        <uni-icons custom-prefix="iconfont" type="icon-qian" size="15"></uni-icons>
-        <text class="price">配送费6元</text>
+      <!-- 1. 状态与费用 -->
+      <view class="info-row">
+        <view class="status" :class="{ closed: !status }">{{ status ? '营业中' : '打烊中' }}</view>
+        <view class="delivery">
+             <text class="txt">配送费￥{{ config.deliveryStatus===1 ? config.deliveryFee : 0 }}</text>
+             <text class="split">|</text>
+             <text class="txt">￥{{ config.minOrderAmount }}起送</text>
+        </view>
       </view>
-      <view class="info2">
-        <text class="address">餐厅地址：广州市番禺区亚运城广场</text>
-        <uni-icons @click="phone" custom-prefix="iconfont" type="icon-dianhua" size="20"></uni-icons>
+
+      <!-- 2. 地址与电话 -->
+      <view class="info-row border-bottom">
+        <view class="address-box">
+            <uni-icons type="location" size="14" color="#666"></uni-icons>
+            <text class="address-text">{{ config.address }}</text>
+        </view>
+        <view class="phone-btn" @click="phone">
+            <uni-icons type="phone-filled" size="18" color="#00aaff"></uni-icons>
+        </view>
+      </view>
+
+      <!-- 3. 【新增】营业时间与公告 -->
+      <view class="info-row small-text">
+          <text>营业时间：{{ config.openingHours || '全天' }}</text>
+      </view>
+      <view class="info-row small-text" v-if="config.notice">
+          <text class="notice-tag">公告</text>
+          <text class="notice-content">{{ config.notice }}</text>
       </view>
     </view>
+    
     <view class="blank"></view>
   </view>
 </template>
 
 <script setup lang="ts">
-import {getStatusAPI} from '@/api/shop'
-import {onLoad} from '@dcloudio/uni-app'
-import {ref} from 'vue'
+import { defineProps, computed } from 'vue'
+import type { ShopConfig } from '@/types/shop'
 
-// 店铺营业状态
-const status = ref(true)
+const props = defineProps<{
+  status: boolean
+  shopConfig?: ShopConfig
+}>()
 
-// 获取屏幕边界到安全区域距离
-const {safeAreaInsets} = uni.getSystemInfoSync()
-// 页面加载
-onLoad(async () => {
-  const res = await getStatusAPI()
-  console.log('店铺状态---------', res)
-  status.value = res.data === 1 ? true : false
+const config = computed(() => {
+  return props.shopConfig || {
+    id: 1, name: '', address: '加载中...', phone: '',
+    deliveryFee: 0, deliveryStatus: 1,
+    packFee: 0, packStatus: 1,
+    minOrderAmount: 0, 
+    openingHours: '', notice: '',
+    autoAccept: 0,
+  }
 })
 
-const back = () => {
-  uni.switchTab({url: '/pages/index/index'})
-}
+const { safeAreaInsets } = uni.getSystemInfoSync()
 
 const phone = () => {
-  uni.makePhoneCall({phoneNumber: '1999'})
+  const phoneNumber = config.value.phone
+  if(phoneNumber) uni.makePhoneCall({phoneNumber})
 }
 </script>
 
 <style lang="less" scoped>
-.navbar-fixed {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100px;
-  z-index: 999;
-}
-
-/* 自定义导航条 */
+.navbar-wrap { width: 100%; background-color: #fff; position: relative; z-index: 10; }
 .navbar {
-  background-image: url(@/static/images/navigator_bg.png);
-  background-size: cover;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  padding-top: 20px;
-
-  .logo {
-    display: flex;
-    align-items: center;
-    height: 64rpx;
-    padding-left: 30rpx;
-    padding-top: 20rpx;
-
-    .back {
-      width: 50rpx;
-      height: 40rpx;
-      margin: 5rpx;
-    }
-
-    .brand {
-      width: 220rpx;
-      height: 50rpx;
-    }
-
-    .logo-text {
-      flex: 1;
-      line-height: 20rpx;
-      color: #fff;
-      margin: 2rpx 0 0 20rpx;
-      padding-left: 20rpx;
-      border-left: 1rpx solid #fff;
-      font-size: 24rpx;
-    }
+  background-color: #00aaff;
+  padding-bottom: 100rpx; /* 留空间给卡片 */
+  .logo { height: 88rpx; display: flex; align-items: center; padding-left: 30rpx; 
+    .logo-text { color: #fff; font-size: 32rpx; font-weight: bold; }
   }
 }
 
 .info {
-  position: fixed;
-  z-index: 100;
-  top: 120rpx;
-  left: 20rpx;
-  width: 90%;
-  // padding: 0 10rpx 0 10rpx;
-  height: 120rpx;
-  margin: 16rpx 20rpx;
-  color: #333;
-  font-size: 28rpx;
-  border-radius: 10rpx;
+  margin: -80rpx 20rpx 0 20rpx;
+  position: relative; z-index: 100;
+  padding: 30rpx;
   background-color: #fff;
-  box-shadow: 0 5rpx 10rpx 5rpx #ccc;
-  .status {
-    display: inline-block;
-    margin: 10rpx 20rpx;
-    padding: 5rpx;
-    border-radius: 5rpx;
-    font-size: 25rpx;
-    background-color: #0d8;
-    color: #fff;
+  border-radius: 16rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.06);
+  
+  .info-row {
+      display: flex; align-items: center; margin-bottom: 16rpx;
+      &.border-bottom { padding-bottom: 16rpx; border-bottom: 1rpx dashed #eee; margin-bottom: 16rpx;}
+      
+      .status {
+        margin-right: 20rpx; padding: 4rpx 10rpx; border-radius: 6rpx;
+        font-size: 20rpx; background-color: #39cf58; color: #fff;
+        &.closed { background-color: #999; }
+      }
+      .delivery {
+          font-size: 24rpx; color: #666;
+          .split { margin: 0 10rpx; color: #ddd; }
+      }
+      .address-box {
+          flex: 1; display: flex; align-items: center; overflow: hidden;
+          .address-text { margin-left: 6rpx; font-size: 26rpx; color: #333; font-weight: bold; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+      }
   }
-  .price {
-    margin: 10rpx;
-    font-size: 28rpx;
-    color: #666;
-  }
-  .info2 {
-    position: relative;
-    .address {
-      margin: 10rpx 20rpx;
-      font-size: 25rpx;
-      color: #666;
-    }
-    uni-icons {
-      position: absolute;
-      right: 30rpx;
-    }
+  
+  .small-text {
+      font-size: 22rpx; color: #888; margin-bottom: 8rpx; align-items: flex-start;
+      .notice-tag { background: #ffebd7; color: #ff6600; padding: 2rpx 6rpx; border-radius: 4rpx; margin-right: 10rpx; font-size: 20rpx;}
+      .notice-content { flex: 1; line-height: 1.4;}
   }
 }
-
-.icon-scan {
-  font-size: 30rpx;
-  padding: 15rpx;
-}
-
-.blank {
-  width: 100%;
-  height: 40rpx;
-  background-color: #fff;
-}
+.blank { height: 20rpx; background-color: #fff; }
 </style>

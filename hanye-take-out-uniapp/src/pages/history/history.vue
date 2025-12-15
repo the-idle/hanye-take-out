@@ -49,7 +49,7 @@
 <script lang="ts" setup>
 import pushMsg from '../../components/message/pushMsg.vue'
 import {ref} from 'vue'
-import {onLoad, onReachBottom} from '@dcloudio/uni-app'
+import {onLoad, onReachBottom, onShow} from '@dcloudio/uni-app'
 import {getOrderPageAPI, reOrderAPI} from '@/api/order'
 import {cleanCartAPI} from '@/api/cart'
 import type {OrderPageDTO, OrderVO} from '@/types/order'
@@ -106,7 +106,8 @@ const statusList = [
     name: '已取消',
   },
 ]
-
+const page = ref(1)
+const pageSize = ref(10)
 const activeIndex = ref(0)
 const historyOrders = ref<OrderVO[]>([])
 const orderDTO = ref<OrderPageDTO>({
@@ -120,6 +121,18 @@ onLoad(async () => {
   console.log('首先分页获取所有订单信息', orderDTO.value)
   // 分页获取所有订单信息（刚开始只展示前6条）
   const res = await getOrderPage(0)
+})
+onShow(() => {
+  // 1. 重置分页
+  if (typeof page !== 'undefined') {
+      page.value = 1 
+  }
+  // 2. 清空列表 (防止重复叠加)
+  if (typeof orderList !== 'undefined') {
+      orderList.value = []
+  }
+  // 3. 重新加载
+  getOrderList()
 })
 
 // 页面上拉触底事件的处理函数
@@ -185,6 +198,10 @@ const pushOrder = (id: number) => {
   //   title: '已催单',
   //   icon: 'none',
   // })
+}
+
+function getOrderList() {
+	throw new Error('Function not implemented.')
 }
 </script>
 

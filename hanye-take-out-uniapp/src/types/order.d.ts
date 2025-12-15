@@ -30,6 +30,7 @@ export type Order = Partial<{
   deliveryStatus: number // 配送状态  1立即送出  0选择具体时间
   deliveryTime: Date // 送达时间
   packAmount: number // 打包费
+  deliveryFee?: number // 配送费（可选字段，如果后端没有返回则前端计算）
   tablewareNumber: number // 餐具数量
   tablewareStatus: number // 餐具数量状态  1按餐量提供  0选择具体数量
 }>

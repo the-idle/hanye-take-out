@@ -52,7 +52,7 @@
       </view>
       <view class="word_text">
         <view class="word_left">配送费</view>
-        <view class="word_right">￥6</view>
+        <view class="word_right">￥{{ computedDeliveryFee.toFixed(2) }}</view>
       </view>
       <view class="all_price">
         <text class="word_right">总价 ￥{{ order.amount }}</text>
@@ -110,7 +110,7 @@
 
 <script lang="ts" setup>
 import pushMsg from '../../components/message/pushMsg.vue'
-import {ref, reactive} from 'vue'
+import {ref, reactive, computed} from 'vue'
 import {onLoad} from '@dcloudio/uni-app'
 import {getOrderAPI, cancelOrderAPI, reOrderAPI, urgeOrderAPI, payOrderAPI} from '@/api/order'
 import {cleanCartAPI} from '@/api/cart'
@@ -175,6 +175,29 @@ const getOrderDetail = async () => {
   Object.assign(order, res.data)
   console.log('刷新得到新的order', order)
 }
+
+// 计算配送费：订单总金额 - 菜品总金额 - 打包费
+const computedDeliveryFee = computed(() => {
+  // 如果订单中已经有配送费字段，直接使用
+  if (order.deliveryFee !== undefined && order.deliveryFee !== null) {
+    return Number(order.deliveryFee)
+  }
+  
+  // 否则通过计算得出：总金额 - 菜品金额 - 打包费
+  const totalAmount = order.amount || 0 // 订单总金额
+  const packAmount = order.packAmount || 0 // 打包费
+  
+  // 计算菜品总金额
+  const dishTotal = (order.orderDetailList || []).reduce((sum, item) => {
+    return sum + ((item.amount || 0) * (item.number || 0))
+  }, 0)
+  
+  // 配送费 = 总金额 - 菜品金额 - 打包费
+  const deliveryFee = totalAmount - dishTotal - packAmount
+  
+  // 确保配送费不为负数（防止数据异常）
+  return Math.max(0, deliveryFee)
+})
 
 // 只有待付款，或者商家接单前，才能取消订单
 const cancelOrder = async () => {

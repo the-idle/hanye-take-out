@@ -17,5 +17,5 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     };
   }
 });
-const Component = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-aaa00962"], ["__file", "D:/MyCode/public_project/hanye-take-out/hanye-take-out-uniapp/src/components/empty/Empty.vue"]]);
+const Component = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-aaa00962"], ["__file", "D:/opgames/waimai/hanye-take-out/hanye-take-out-uniapp/src/components/empty/Empty.vue"]]);
 wx.createComponent(Component);

@@ -3,16 +3,16 @@ hanye:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/hanye_take_out
     username: root
-    password: 20040111
+    password: root
   redis:
     host: localhost
     port: 6379
-    password: 123456
+    password:
     database: 1
   wechat:
     # 下面这两句改成自己的，不然小程序登不上！
-    appid: wxbd5d45c4c0860e6d
-    secret: 3e9d250d89a4140bdb5aac8d69aa23bb
+    appid: wxbf3ebd0857f7228a
+    secret: d4f1fca2638c969ff85f7de9aac4736a
     # 别人的文件，由于没企业商户号，这里只是摆设
     mchid: 1561414331
     mchSerialNo: 4B3B3DC35414AD50B1B755BAF8DE9CC7CF407606

@@ -58,28 +58,55 @@ const toSuccess = async () => {
     })
     return
   }
-  console.log('支付成功')
-  // 支付后修改订单状态
+
+  console.log('开始模拟支付...')
+  
+  // 1. 构造参数
   const payDTO = {
     orderNumber: orderNumber.value,
-    payMethod: 1, // 本平台默认微信支付
+    payMethod: 1, 
   }
-  await payOrderAPI(payDTO)
-  // 关闭定时器
-  if (countdownStore.timer !== undefined) {
-    clearInterval(countdownStore.timer)
-    countdownStore.timer = undefined
-  }
-  uni.redirectTo({
-    url:
-      '/pages/submit/success?orderId=' +
-      orderId.value +
-      '&orderNumber=' +
-      orderNumber.value +
-      '&orderAmount=' +
-      orderAmount.value +
-      '&orderTime=' +
-      orderTime.value,
+
+  // 2. 直接调用后端写好的 /mock 接口 (这里直接用uni.request最稳妥，不用去改api文件了)
+  // 注意：url 前缀要和你 request.js 里的 baseUrl 一致，通常是 /api 或 /dev-api
+  // 如果你本地没配置代理，写全路径：http://localhost:8081/user/order/payment/mock
+  uni.request({
+    url: 'http://localhost:8081/user/order/payment/mock', // 请确保端口号和你后端一致
+    method: 'PUT',
+    data: payDTO,
+    header: {
+      authentication: uni.getStorageSync('token') // 必须带上Token
+    },
+    success: (res: any) => {
+      if (res.data.code === 0) {
+        console.log('模拟支付成功')
+        
+        // 关闭定时器
+        if (countdownStore.timer !== undefined) {
+          clearInterval(countdownStore.timer)
+          countdownStore.timer = undefined
+        }
+
+        // 跳转成功页
+        uni.redirectTo({
+          url:
+            '/pages/submit/success?orderId=' +
+            orderId.value +
+            '&orderNumber=' +
+            orderNumber.value +
+            '&orderAmount=' +
+            orderAmount.value +
+            '&orderTime=' +
+            orderTime.value,
+        })
+      } else {
+        uni.showToast({ title: res.data.msg || '支付失败', icon: 'none' })
+      }
+    },
+    fail: (err) => {
+      console.log(err)
+      uni.showToast({ title: '网络请求失败', icon: 'none' })
+    }
   })
 }
 
@@ -93,8 +120,8 @@ const timeup = () => {
     clearInterval(countdownStore.timer)
   }
   countdownStore.timer = setInterval(() => {
-    console.log('什么timer？', countdownStore.timer)
-    console.log('看看是不是一秒执行一次', orderTime.value)
+    // console.log('什么timer？', countdownStore.timer)
+    // console.log('看看是不是一秒执行一次', orderTime.value)
     // 订单下单时间
     let buy_time = new Date(orderTime.value as Date).getTime()
     // 计算剩余时间
@@ -106,12 +133,12 @@ const timeup = () => {
     if (time > 0 && countdownStore.timer !== undefined) {
       // 计算剩余的分钟
       var m = (time / 1000 / 60) % 60
-      console.log('m', m)
+      // console.log('m', m)
       // 计算剩余的秒数
       var s = (time / 1000) % 60
-      console.log('s', s)
+      // console.log('s', s)
       timeupSecond.value = time / 1000
-      console.log('timeupSecond小于0？', timeupSecond.value)
+      // console.log('timeupSecond小于0？', timeupSecond.value)
       countdownStore.showM = Math.floor(m)
       countdownStore.showS = Math.floor(s)
       // showTime.value = minutes.value + ':' + seconds.value

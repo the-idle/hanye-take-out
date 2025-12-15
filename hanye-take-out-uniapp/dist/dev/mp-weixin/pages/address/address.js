@@ -12,69 +12,78 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
   __name: "address",
   setup(__props) {
     const store = stores_modules_address.useAddressStore();
-    const testValue = common_vendor.ref(true);
     const addressList = common_vendor.ref([]);
-    const addressBackUrl = store.addressBackUrl;
-    const statusBarHeight = common_vendor.computed(() => common_vendor.index.getSystemInfoSync().statusBarHeight + "px");
-    common_vendor.onMounted(() => {
+    store.addressBackUrl;
+    const isFromOrder = common_vendor.ref(false);
+    common_vendor.onShow(() => {
       getAddressList();
     });
+    common_vendor.onLoad((options) => {
+      if (options.from === "order") {
+        isFromOrder.value = true;
+      }
+    });
     const getAddressList = async () => {
-      testValue.value = false;
-      const res = await api_address.getAddressListAPI();
-      if (res.code === 0) {
-        testValue.value = true;
-        addressList.value = res.data;
+      try {
+        const res = await api_address.getAddressListAPI();
+        if (res.code === 1 || res.code === 0) {
+          addressList.value = res.data || [];
+        }
+      } catch (e) {
+        console.error("获取列表失败", e);
+        common_vendor.index.showToast({ title: "加载失败", icon: "none" });
       }
     };
-    const trans = (item) => {
-      if (item === "公司") {
-        return "1";
-      } else if (item === "家") {
-        return "2";
-      } else if (item === "学校") {
-        return "3";
-      } else {
-        return "4";
-      }
-    };
-    const getLableVal = (item) => {
-      if (item === null) {
-        return "其他";
-      }
-      return item;
-    };
-    const addOrEdit = (type, item) => {
-      if (type === "新增") {
-        common_vendor.index.redirectTo({
-          url: "/pages/addOrEditAddress/addOrEditAddress"
-        });
-      } else {
-        console.log("我要去编辑地址页面！！！  item", item);
-        common_vendor.index.redirectTo({
-          url: "/pages/addOrEditAddress/addOrEditAddress?type=编辑&id=" + item.id
-        });
-      }
-    };
-    const choseAddress = (e, item) => {
-      console.log("addressBackUrl", addressBackUrl);
-      if (addressBackUrl !== "/pages/submit/submit") {
-        return false;
-      }
-      common_vendor.index.redirectTo({
-        url: "/pages/submit/submit?address=" + JSON.stringify(item)
+    const onAdd = () => {
+      common_vendor.index.navigateTo({
+        url: "/pages/addOrEditAddress/addOrEditAddress"
       });
     };
-    const getRadio = async (e, item) => {
-      const res = await api_address.updateDefaultAddressAPI({ id: item.id });
-      if (res.code === 0) {
-        common_vendor.index.showToast({
-          title: "默认地址设置成功",
-          duration: 2e3,
-          icon: "none"
-        });
-        getAddressList();
+    const onEdit = (item) => {
+      common_vendor.index.navigateTo({
+        url: "/pages/addOrEditAddress/addOrEditAddress?type=编辑&id=" + item.id
+      });
+    };
+    const onDelete = (item) => {
+      common_vendor.index.showModal({
+        title: "提示",
+        content: "确定要删除该地址吗？",
+        success: async (res) => {
+          if (res.confirm) {
+            try {
+              const apiRes = await api_address.deleteAddressAPI(item.id);
+              if (apiRes.code === 1 || apiRes.code === 0) {
+                common_vendor.index.showToast({ title: "删除成功", icon: "none" });
+                getAddressList();
+              } else {
+                common_vendor.index.showToast({ title: apiRes.msg || "删除失败", icon: "none" });
+              }
+            } catch (e) {
+              common_vendor.index.showToast({ title: "删除出错", icon: "none" });
+            }
+          }
+        }
+      });
+    };
+    const setDefault = async (item) => {
+      try {
+        const res = await api_address.updateDefaultAddressAPI({ id: item.id });
+        if (res.code === 1 || res.code === 0) {
+          common_vendor.index.showToast({ title: "设置成功", icon: "none" });
+          getAddressList();
+        }
+      } catch (e) {
+        console.error("设置默认失败", e);
       }
+    };
+    const choseAddress = (item) => {
+      if (!isFromOrder.value) {
+        return;
+      }
+      common_vendor.index.setStorageSync("select_address", item);
+      common_vendor.index.navigateBack({
+        delta: 1
+      });
     };
     return (_ctx, _cache) => {
       return common_vendor.e({
@@ -82,37 +91,32 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       }, addressList.value && addressList.value.length > 0 ? {
         b: common_vendor.f(addressList.value, (item, index, i0) => {
           return common_vendor.e({
-            a: common_vendor.t(getLableVal(item.label)),
-            b: common_vendor.n("tag" + trans(item.label)),
-            c: common_vendor.t(item.provinceName),
-            d: common_vendor.t(item.cityName),
+            a: common_vendor.t(item.consignee),
+            b: common_vendor.t(item.phone),
+            c: item.label
+          }, item.label ? {
+            d: common_vendor.t(item.label)
+          } : {}, {
             e: common_vendor.t(item.districtName),
             f: common_vendor.t(item.detail),
-            g: common_vendor.t(item.gender === 1 ? item.consignee + " 男士" : item.consignee + " 女士"),
-            h: common_vendor.t(item.phone),
-            i: common_vendor.o(($event) => addOrEdit("编辑", item), index),
-            j: common_vendor.o(($event) => choseAddress(index, item), index)
-          }, testValue.value ? {
-            k: String(item.id),
-            l: item.isDefault === 1,
-            m: common_vendor.o(($event) => getRadio(index, item), index)
-          } : {}, {
-            n: common_vendor.o(($event) => getRadio(index, item), index),
-            o: index
+            g: common_vendor.o(($event) => choseAddress(item), index),
+            h: item.isDefault === 1,
+            i: common_vendor.o(($event) => setDefault(item), index),
+            j: common_vendor.o(($event) => setDefault(item), index),
+            k: common_vendor.o(($event) => onEdit(item), index),
+            l: common_vendor.o(($event) => onDelete(item), index),
+            m: index
           });
-        }),
-        c: testValue.value
+        })
       } : {
-        d: common_vendor.p({
-          boxHeight: "100%",
-          textLabel: "暂无地址"
+        c: common_vendor.p({
+          textLabel: "暂无收货地址"
         })
       }, {
-        e: common_vendor.o(($event) => addOrEdit("新增", 0)),
-        f: `calc(100% - 136rpx - ${statusBarHeight.value} - 44px - 20rpx)`
+        d: common_vendor.o(onAdd)
       });
     };
   }
 });
-const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-2312e3da"], ["__file", "D:/MyCode/public_project/hanye-take-out/hanye-take-out-uniapp/src/pages/address/address.vue"]]);
+const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-2312e3da"], ["__file", "D:/opgames/waimai/hanye-take-out/hanye-take-out-uniapp/src/pages/address/address.vue"]]);
 wx.createPage(MiniProgramPage);

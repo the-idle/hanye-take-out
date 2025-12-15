@@ -1527,8 +1527,8 @@ function populateParameters(fromRes, toRes) {
   let _SDKVersion = SDKVersion;
   const hostLanguage = language.replace(/_/g, "-");
   const parameters = {
-    appId: "",
-    appName: "",
+    appId: "__UNI__BF2B983",
+    appName: "WAIMAI",
     appVersion: "1.0.0",
     appVersionCode: "100",
     appLanguage: getAppLanguage(hostLanguage),
@@ -1671,8 +1671,8 @@ const getAppBaseInfo = {
       hostName: _hostName,
       hostSDKVersion: SDKVersion,
       hostTheme: theme,
-      appId: "",
-      appName: "",
+      appId: "__UNI__BF2B983",
+      appName: "WAIMAI",
       appVersion: "1.0.0",
       appVersionCode: "100",
       appLanguage: getAppLanguage(hostLanguage)
@@ -8675,7 +8675,6 @@ exports.o = o;
 exports.onHide = onHide;
 exports.onLaunch = onLaunch;
 exports.onLoad = onLoad;
-exports.onMounted = onMounted;
 exports.onReachBottom = onReachBottom;
 exports.onShow = onShow;
 exports.onUnload = onUnload;

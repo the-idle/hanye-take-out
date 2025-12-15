@@ -24,21 +24,23 @@ public class OrderTask {
     /**
      * 处理支付超时订单
      */
-    @Scheduled(cron = "0 * * * * ?") // 表示每分钟第0秒触发
-    public void processTimeoutOrder(){
-        log.info("处理支付超时订单：{}", new Date());
-        LocalDateTime time = LocalDateTime.now().plusMinutes(-15);
-        // 每分钟，查询待支付并且超过15分钟的所有订单
-        // select * from orders where status = 1 and order_time < 当前时间-15分钟
+    @Scheduled(cron = "0 * * * * ?") // 每分钟执行一次
+    public void processTimeoutOrder() {
+        log.info("处理支付超时订单：{}", LocalDateTime.now());
+        // 查询15分钟及以前的待付款订单
+        LocalDateTime time = LocalDateTime.now().plusMinutes(-15); // 这里是超时时间
         List<Order> ordersList = orderMapper.getByStatusAndOrderTimeLT(Order.PENDING_PAYMENT, time);
-        // 超时的订单要改为取消，并设置取消原因和取消时间
-        if(ordersList != null && !ordersList.isEmpty()){
-            ordersList.forEach(order -> {
-                order.setStatus(Order.CANCELLED);
-                order.setCancelReason("支付超时，自动取消");
-                order.setCancelTime(LocalDateTime.now());
-                orderMapper.update(order);
-            });
+
+        if (ordersList != null && !ordersList.isEmpty()) {
+            for (Order order : ordersList) {
+                // 如果订单状态还是待付款，就取消
+                if (order.getStatus().equals(Order.PENDING_PAYMENT)) {
+                    order.setStatus(Order.CANCELLED);
+                    order.setCancelReason("订单超时，自动取消");
+                    order.setCancelTime(LocalDateTime.now());
+                    orderMapper.update(order);
+                }
+            }
         }
     }
 

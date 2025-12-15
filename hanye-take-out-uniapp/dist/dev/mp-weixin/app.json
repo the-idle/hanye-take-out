@@ -1,9 +1,9 @@
 {
   "pages": [
+    "pages/order/order",
+    "pages/my/my",
     "pages/index/index",
     "pages/login/login",
-    "pages/my/my",
-    "pages/order/order",
     "pages/detail/detail",
     "pages/submit/submit",
     "pages/submit/success",
@@ -17,19 +17,19 @@
   ],
   "window": {
     "navigationBarTextStyle": "white",
-    "navigationBarTitleText": "uni-app",
+    "navigationBarTitleText": "点餐小程序",
     "navigationBarBackgroundColor": "#00aaff",
     "backgroundColor": "#F8F8F8"
   },
   "tabBar": {
-    "color": "#333",
+    "color": "#999999",
     "selectedColor": "#00aaff",
-    "backgroundColor": "#fff",
-    "borderStyle": "white",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
     "list": [
       {
-        "text": "首页",
-        "pagePath": "pages/index/index",
+        "text": "点餐",
+        "pagePath": "pages/order/order",
         "iconPath": "static/tabs/home_default.png",
         "selectedIconPath": "static/tabs/home_selected.png"
       },
@@ -41,5 +41,14 @@
       }
     ]
   },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "我们需要您的位置以判断是否在配送范围内"
+    }
+  },
+  "requiredPrivateInfos": [
+    "getLocation",
+    "chooseLocation"
+  ],
   "usingComponents": {}
 }

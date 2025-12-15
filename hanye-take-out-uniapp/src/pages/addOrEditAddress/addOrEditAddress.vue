@@ -1,79 +1,64 @@
 <template>
-  <view class="customer-box">
-    <view class="add_edit" :style="{height: `calc(100% - ${statusBarHeight} - 44px)`}">
-      <form class="form_address">
-        <view class="uni-form-item uni-column form_item">
-          <view class="title">联系人</view>
-          <input
-            class="uni-input"
-            placeholder-class="uni-place"
-            v-model="form.consignee"
-            placeholder="请输入联系人"
-            :maxlength="5"
-          />
-          <view class="radio">
-            <view class="radio-item" v-for="(item, index) in items" :key="index" @click="sexChangeHandle(item.value)">
-              <image v-if="item.value != form.gender" class="radio-img" src="../../static/icon/icon-radio.png"></image>
-              <image v-else class="radio-img" src="../../static/icon/icon-radio-selected.png"></image>
-              <text class="radio-label">{{ item.name }}</text>
+  <view class="page-container">
+    <view class="card-box">
+      <!-- 联系人 -->
+      <view class="form-row">
+        <view class="label">联系人</view>
+        <view class="input-box">
+          <input class="uni-input" placeholder-class="placeholder" v-model="form.consignee" placeholder="请填写收货人" />
+          <view class="gender-radio">
+            <view class="radio-tag" :class="{ active: form.gender === item.value }" v-for="(item, index) in items" :key="index" @click="form.gender = item.value">
+              {{ item.name }}
             </view>
           </view>
         </view>
-        <view class="uni-form-item uni-column form_item">
-          <view class="title">手机号</view>
-          <input
-            class="uni-input"
-            v-model="form.phone"
-            type="number"
-            placeholder-class="uni-place"
-            placeholder="请输入手机号"
-            :maxlength="11"
-          />
-        </view>
-        <view class="uni-form-item uni-column form_item">
-          <view class="title">所在地区</view>
-          <!-- 只有微信小程序端内置了省市区数据 -->
-          <!-- #ifdef MP-WEIXIN -->
-          <view class="form-item">
-            <picker @change="pickerChange" mode="region" class="picker" :value="address?.split(' ')">
-              <view v-if="address">{{ address }}</view>
-              <view class="uni-place" v-else>请选择城市</view>
-            </picker>
-          </view>
-          <!-- #endif -->
-        </view>
-        <view class="uni-form-item uni-column form_item">
-          <view class="title">详细地址</view>
-          <input
-            class="uni-input"
-            :class="{'detail-ios': platform == 'ios'}"
-            placeholder-class="uni-place"
-            v-model="form.detail"
-            placeholder="精确到门牌号"
-          />
-        </view>
-        <view class="uni-form-item uni-column form_item tag-box">
-          <view class="title">标签:</view>
-          <text
-            :class="{active: form.label === item.name}"
-            class="tag_text"
-            v-for="item in options"
-            :key="item.name"
-            @click="getTextOption(item)"
-            >{{ item.name }}
-          </text>
-        </view>
-      </form>
-      <view class="add_address">
-        <button class="add_btn" @click="addAddress()">保存地址</button>
-        <button v-if="showDel" class="del_btn" type="default" plain @click="deleteAddress()">删除地址</button>
       </view>
+      
+      <!-- 手机号 -->
+      <view class="form-row">
+        <view class="label">手机号</view>
+        <input class="uni-input" type="number" v-model="form.phone" placeholder="请填写收货手机号" maxlength="11" />
+      </view>
+
+      <!-- 地图选点 (存入 districtName) -->
+      <view class="form-row map-row" @click="chooseLocationFromMap">
+        <view class="label">收货地址</view>
+        <view class="map-box">
+            <image src="../../static/icon/location.png" class="map-icon" mode="aspectFit"></image>
+            <view class="map-text-box">
+                <!-- 显示 districtName 作为地图定位点 -->
+                <text v-if="form.districtName && form.districtName !== '已定位'" class="addr-text">{{ form.districtName }}</text>
+                <text v-else class="placeholder">点击定位收货地址</text>
+            </view>
+            <text class="arrow">></text>
+        </view>
+      </view>
+
+      <!-- 门牌号 (存入 detail) -->
+      <view class="form-row no-border">
+        <view class="label">门牌号</view>
+        <input class="uni-input" v-model="form.detail" placeholder="例：8号楼 502室" />
+      </view>
+      
+      <!-- 标签 -->
+      <view class="form-row tag-row">
+        <view class="label">标签</view>
+        <view class="tag-list">
+          <view class="tag-item" :class="{ active: form.label === item.name }" v-for="item in options" :key="item.name" @click="form.label = item.name">
+            {{ item.name }}
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="footer-btn">
+      <button class="btn-save" @click="saveAddress">保存地址</button>
     </view>
   </view>
 </template>
 
 <script lang="ts" setup>
-import {ref} from 'vue'
+import {computed, ref} from 'vue'
 import {addAddressAPI, deleteAddressAPI, getAddressByIdAPI, updateAddressAPI} from '@/api/address'
 import {onLoad, onShow, onUnload} from '@dcloudio/uni-app'
 import {reactive} from 'vue'
@@ -90,10 +75,13 @@ const pickerChange: UniHelper.RegionPickerOnChange = (ev) => {
   fullLocationCode = ev.detail.code!
   console.log(fullLocationCode)
   // 拆分省市区编码给三个变量，后端需要
-  form.provinceCode = fullLocationCode[0]
-  form.cityCode = fullLocationCode[1]
-  form.districtCode = fullLocationCode[2]
+  // form.provinceCode = fullLocationCode[0]
+  // form.cityCode = fullLocationCode[1]
+  // form.districtCode = fullLocationCode[2]
 }
+const SHOP_LAT = 24.3301616; 
+const SHOP_LNG = 109.409511; 
+const MAX_DISTANCE = 5;
 
 const platform = ref('ios')
 const showDel = ref(false)
@@ -122,40 +110,44 @@ const form = reactive({
   id: 0,
   consignee: '',
   phone: '',
-  label: '',
+  label: '家',
   gender: 1,
-  provinceCode: '110000',
-  provinceName: '',
-  cityCode: '110100',
-  cityName: '',
-  districtCode: '110102',
-  districtName: '',
-  detail: '',
+  
+  // 逻辑拆分：
+  provinceName: '已定位', // 默认值，防止后端校验
+  cityName: '已定位',     // 默认值
+  districtName: '',      // 【重点】用来存地图选点的“建筑名”
+  detail: '',            // 【重点】用来存用户填写的“门牌号”
+  
+  latitude: '', 
+  longitude: '' 
 })
 // 联动省市县
 // 弹框的初始值
 const cityPickerValueDefault = [0, 0, 1]
 const pickerText = ref('')
 // 初始值
-const address = ref('北京市 市辖区 西城区')
+const address = ref('')
 // 保存将要删除的
 const delId = ref<number>()
 
-onLoad(async (options) => {
-  init()
-  if (options && options.type === '编辑') {
-    delId.value = -1 // 初始时没有要删除的地址，其id为-1
-    showDel.value = true
-    uni.setNavigationBarTitle({
-      title: '编辑收货地址',
-    })
-    // 保存将要删除的id
-    delId.value = options.id
-    // 查询详情，用于回显原状态信息
-    await queryAddressBookById(options.id)
-  } else {
-    showDel.value = false
-  }
+// 计算属性：判断是否已选点
+const hasLocation = computed(() => {
+    return form.latitude && form.longitude && address.value;
+})
+
+onLoad(async (opt) => {
+    if (opt.id) {
+        uni.setNavigationBarTitle({ title: '修改收货地址' })
+        const res = await getAddressByIdAPI(opt.id)
+        if(res.code === 1 || res.code === 0){
+             Object.assign(form, res.data)
+             // 回显修正：如果之前没存districtName，可以给个默认
+             if(!form.districtName) form.districtName = '';
+        }
+    } else {
+        uni.setNavigationBarTitle({ title: '新增收货地址' })
+    }
 })
 onUnload(() => {
   uni.removeStorage({
@@ -214,6 +206,98 @@ const sexChangeHandle = (val: number) => {
   form.gender = val
   console.log(form.gender)
 }
+
+// 地图选点
+const chooseLocationFromMap = () => {
+    uni.chooseLocation({
+        success: (res) => {
+            console.log('选点结果', res)
+            
+            form.latitude = String(res.latitude)
+            form.longitude = String(res.longitude)
+            
+            // 【核心修改】
+            // 将地图选的大地点（如：柳州市政府）存入 districtName
+            // res.name 是建筑名，res.address 是省市区街道
+            form.districtName = res.name || res.address; 
+            
+            // 确保省市不为空
+            form.provinceName = '已定位'
+            form.cityName = '已定位'
+            
+            // 注意：不要覆盖 form.detail，让用户自己填门牌号
+        }
+    })
+}
+
+// 保存逻辑
+const saveAddress = async () => {
+    // 【修改】强校验
+    if (!form.consignee) return uni.showToast({ title: '请填写联系人', icon: 'none' })
+    if (!form.phone) return uni.showToast({ title: '请填写手机号', icon: 'none' })
+    if (!/^1[3-9]\d{9}$/.test(form.phone)) return uni.showToast({ title: '手机号格式错误', icon: 'none' })
+    
+    // 校验：必须选地图
+    if (!form.districtName || form.districtName === '已定位') {
+        return uni.showToast({ title: '请点击选择收货地址', icon: 'none' })
+    }
+    // 校验：必须填门牌号
+    if (!form.detail) {
+        return uni.showToast({ title: '请填写门牌号', icon: 'none' })
+    }
+    
+    // 门牌号追加
+    // 最终提交的 detail = 地图选点名 + 用户填写的门牌号
+    // 注意：这里为了防止重复拼接，逻辑可以灵活处理，比如后端有两个字段，或者前端拼接好传给后端
+    // 简单做法：不做拼接，直接传。但为了回显方便，建议把 res.name 和 用户输入 分开存，这里暂且直接提交
+    
+    const api = form.id ? updateAddressAPI : addAddressAPI
+    const res = await api(form)
+    
+    if (res.code === 1 || res.code === 0) {
+        uni.showToast({ title: '保存成功' })
+        setTimeout(() => uni.navigateBack(), 800)
+    } else {
+        uni.showToast({ title: res.msg || '保存失败', icon: 'none' })
+    }
+}
+
+// 2. 计算距离函数 (Haversine公式)
+const getDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+  const radLat1 = lat1 * Math.PI / 180.0;
+  const radLat2 = lat2 * Math.PI / 180.0;
+  const a = radLat1 - radLat2;
+  const b = (lng1 * Math.PI / 180.0) - (lng2 * Math.PI / 180.0);
+  let s = 2 * Math.asin(Math.sqrt(Math.pow(Math.sin(a / 2), 2) +
+    Math.cos(radLat1) * Math.cos(radLat2) * Math.pow(Math.sin(b / 2), 2)));
+  s = s * 6378.137; // 地球半径，单位公里
+  s = Math.round(s * 10000) / 10000;
+  return s; 
+}
+
+// 3. 校验逻辑
+const checkDistance = (lat: number, lng: number) => {
+  const distance = getDistance(lat, lng, SHOP_LAT, SHOP_LNG);
+  console.log('当前距离:', distance);
+  
+  if (distance > MAX_DISTANCE) {
+    uni.showModal({
+      title: '超出配送范围',
+      content: `当前距离店铺 ${distance.toFixed(2)}km，超过了${MAX_DISTANCE}km配送范围，请重新选择。`,
+      showCancel: false,
+      success: () => {
+        // 清空无效地址
+        form.detail = '';
+        form.latitude = '';
+        form.longitude = '';
+        address.value = '请选择所在地区';
+      }
+    });
+    return false;
+  }
+  uni.showToast({ title: `距离店铺 ${distance.toFixed(1)}km`, icon: 'none' });
+  return true;
+}
 // 新增地址
 const addAddress = async () => {
   // 1、先校验
@@ -235,9 +319,9 @@ const addAddress = async () => {
       duration: 1000,
       icon: 'none',
     })
-  } else if (address.value === '') {
+  } else if (form.detail === '') {
     return uni.showToast({
-      title: '所在地区不能为空',
+      title: '详细地址不能为空',
       duration: 1000,
       icon: 'none',
     })
@@ -252,12 +336,28 @@ const addAddress = async () => {
       })
     }
   }
+	let pName = '', cName = '', dName = '';
+	if (address.value.includes(' ')) {
+		const arr = address.value.split(' ');
+		pName = arr[0] || '';
+		cName = arr[1] || '';
+		dName = arr[2] || '';
+	} else {
+		// 如果是地图选点，address.value 可能是 "地图定位..."
+		// 我们可以从 detail 截取，或者直接填“已定位”
+		pName = '已定位'; 
+		cName = '已定位';
+		dName = '已定位';
+	}
   // 2、再拼接参数params
   const params = {
     ...(form as {id?: number}),
-    provinceName: address.value.split(' ')[0],
-    cityName: address.value.split(' ')[1],
-    districtName: address.value.split(' ')[2],
+    // provinceName: address.value.split(' ')[0],
+    // cityName: address.value.split(' ')[1],
+    // districtName: address.value.split(' ')[2],
+    provinceName: pName,
+    cityName: cName,
+    districtName: dName	
   }
   // 3、编辑 or 新增 地址
   if (showDel.value) {
@@ -303,190 +403,324 @@ const deleteAddress = async () => {
     // form.address = ''
     form.label = ''
     // form.radio = 0
-    form.provinceCode = '110000'
-    form.cityCode = '110100'
-    form.districtCode = '110102'
+    // form.provinceCode = '110000'
+    // form.cityCode = '110100'
+    // form.districtCode = '110102'
   }
 }
 </script>
 
-<style lang="less" scoped>
-.add_edit {
-  width: 750rpx;
-  height: 100%;
-  background-color: #fff;
+<style lang="scss" scoped>
+/* 页面背景 */
+.page-container {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding: 20rpx;
+  box-sizing: border-box;
+}
 
-  .form_address {
-    .form_item {
-      margin: 0 22rpx;
-      height: 110rpx;
-      line-height: 110rpx;
-      border-bottom: 1px solid #efefef;
-      display: flex;
+/* 卡片容器 */
+.card-box {
+  background-color: #ffffff;
+  border-radius: 24rpx;
+  padding: 0 30rpx;
+  margin-bottom: 30rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.03);
+}
 
-      .title {
-        width: 140rpx;
-        opacity: 1;
-        font-size: 28rpx;
-        font-family: PingFangSC, PingFangSC-Medium;
-        font-weight: 500;
-        text-align: left;
-        color: #333333;
-        letter-spacing: 0px;
-      }
-
-      .uni-input {
-        flex: 1;
-        height: 110rpx;
-        line-height: 110rpx;
-      }
-
-      /deep/ .uni-place {
-        font-size: 26rpx;
-        font-family: PingFangSC, PingFangSC-Regular;
-        font-weight: 400;
-        color: #999999;
-      }
-
-      .radio {
-        opacity: 1;
-        font-size: 26rpx;
-        font-family: PingFangSC, PingFangSC-Regular;
-        font-weight: 400;
-        text-align: left;
-        color: #333333;
-        letter-spacing: 0px;
-        display: flex;
-        padding-right: 20rpx;
-
-        .radio-item {
-          display: flex;
-          align-items: center;
-
-          &:first-child {
-            margin-right: 54rpx;
-          }
-        }
-
-        .radio-img {
-          width: 32rpx;
-          height: 32rpx;
-          margin-right: 10rpx;
-        }
-      }
-
-      // 标签
-      .tag_text {
-        width: 68rpx;
-        height: 44rpx;
-        line-height: 40rpx;
-        border: 1px solid #e5e4e4;
-        display: inline-block;
-        border-radius: 6rpx;
-        text-align: center;
-        margin-top: 34rpx;
-        box-sizing: border-box;
-        color: #333333;
-        font-size: 24rpx;
-
-        &:nth-child(3) {
-          margin: 34rpx 20rpx;
-        }
-
-        &:nth-child(3) {
-          &.active {
-            background: #fef8e7;
-            border: 1px solid #fef8e7;
-          }
-        }
-
-        &:nth-child(4) {
-          &.active {
-            background: #e7fef8;
-            border: 1px solid #e7fef8;
-          }
-        }
-      }
-
-      .active {
-        background: #e1f1fe;
-        border: 1px solid #e1f1fe;
-      }
-    }
-
-    // 详细地址
-    .detail {
-      padding: 20rpx 22rpx;
-      width: 100%;
-      box-sizing: border-box;
-
-      /deep/ .uni-place {
-        font-size: 26rpx;
-        font-family: PingFangSC, PingFangSC-Regular;
-        font-weight: 400;
-        color: #999999;
-        text-align: left;
-      }
-
-      // color: #999;
-    }
-
-    .detail-ios {
-      padding: 20rpx 14rpx;
-    }
+/* 表单行 */
+.form-row {
+  display: flex;
+  align-items: flex-start; /* 顶部对齐 */
+  padding: 36rpx 0;
+  border-bottom: 1rpx solid #eeeeee;
+  
+  &.no-border {
+    border-bottom: none;
+  }
+  
+  &.tag-row {
+      align-items: center;
   }
 
-  // .tag-box {
-  //   // border-top: 1px solid #efefef;
-  // }
+  .label {
+    width: 140rpx;
+    font-size: 30rpx;
+    color: #333;
+    font-weight: bold;
+    padding-top: 4rpx; /* 微调对齐 */
+  }
 
-  .add_address {
-    margin: 0 auto;
+  .input-box {
+      flex: 1;
+  }
+  
+  .uni-input {
+    flex: 1;
+    font-size: 30rpx;
+    color: #333;
+  }
 
-    .add_btn {
-      margin-top: 40rpx;
-      width: 668rpx;
-      height: 72rpx;
-      line-height: 72rpx;
-      border-radius: 36rpx;
-      background: #22ccff;
-      border: 1px solid #22ccff;
-      opacity: 1;
-      font-size: 30rpx;
-      font-family: PingFangSC, PingFangSC-Medium;
-      font-weight: 500;
-      text-align: center;
-      color: #ffffff;
-      letter-spacing: 0px;
-
-      .img_btn {
-        width: 44rpx;
-        height: 44rpx;
-        vertical-align: middle;
-        margin-bottom: 8rpx;
+  .placeholder {
+    color: #ccc;
+    font-size: 28rpx;
+  }
+  
+  /* 地址展示 */
+  .address-display {
+      flex: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      
+      .addr-text {
+          flex: 1;
+          font-size: 30rpx;
+          line-height: 1.4;
+          padding-right: 20rpx;
       }
-    }
+      .icon-arrow {
+          color: #ccc;
+          font-size: 32rpx;
+      }
+  }
+}
 
-    .del_btn {
-      margin-top: 40rpx;
-      opacity: 1;
-      background: #f6f6f6;
-      border: 1px solid #f6f6f6;
-      width: 668rpx;
-      height: 72rpx;
-      line-height: 72rpx;
-      border-radius: 72rpx;
-      font-size: 30rpx;
-      font-family: PingFangSC, PingFangSC-Medium;
-      font-weight: 550;
-      text-align: center;
-      color: #333333;
-      letter-spacing: 0px;
+/* 性别选择胶囊 */
+.gender-radio {
+  display: flex;
+  margin-top: 24rpx;
+  
+  .radio-tag {
+    padding: 10rpx 40rpx;
+    margin-right: 20rpx;
+    border: 1rpx solid #e5e5e5;
+    border-radius: 40rpx;
+    font-size: 26rpx;
+    color: #666;
+    background: #fff;
+    
+    &.active {
+      background: rgba(0, 170, 255, 0.1);
+      border-color: #00aaff;
+      color: #00aaff;
+      font-weight: bold;
     }
   }
 }
 
-.customer-box {
-  height: 100vh;
+/* 标签列表 */
+.tag-list {
+  display: flex;
+  .tag-item {
+    width: 100rpx;
+    height: 56rpx;
+    line-height: 56rpx;
+    text-align: center;
+    border: 1rpx solid #e5e5e5;
+    border-radius: 8rpx;
+    margin-right: 20rpx;
+    font-size: 26rpx;
+    color: #666;
+    
+    &.active {
+      background: #00aaff;
+      border-color: #00aaff;
+      color: #fff;
+    }
+  }
+}
+
+/* 底部按钮区 */
+.footer-btn {
+  margin-top: 60rpx;
+  
+  .btn-save {
+    background: linear-gradient(90deg, #00c6ff, #007aff);
+    color: #fff;
+    border-radius: 50rpx;
+    font-size: 32rpx;
+    height: 90rpx;
+    line-height: 90rpx;
+    box-shadow: 0 10rpx 20rpx rgba(0, 122, 255, 0.2);
+    
+    &:active {
+        opacity: 0.9;
+    }
+  }
+  
+  .btn-del {
+    text-align: center;
+    margin-top: 30rpx;
+    color: #ff4d4f;
+    font-size: 28rpx;
+    background: #fff;
+    padding: 20rpx;
+    border-radius: 50rpx;
+  }
+}
+
+/* 只列出新增/修改部分，其他的沿用之前的 */
+.map-row {
+    .map-box {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        background: #f9f9f9; /* 浅灰背景，像个按钮 */
+        padding: 20rpx;
+        border-radius: 12rpx;
+    }
+    
+    .map-icon {
+        width: 32rpx;
+        height: 32rpx;
+        margin-right: 16rpx;
+    }
+    
+    .map-text-box {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .addr-text {
+        font-size: 28rpx;
+        color: #333;
+        font-weight: bold;
+    }
+}
+.page-container {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding: 20rpx;
+  box-sizing: border-box;
+}
+
+/* 卡片容器 */
+.card-box {
+  background-color: #ffffff;
+  border-radius: 24rpx;
+  padding: 0 30rpx;
+  margin-bottom: 30rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.03);
+}
+
+/* 表单行 */
+.form-row {
+  display: flex;
+  align-items: flex-start; /* 顶部对齐 */
+  padding: 36rpx 0;
+  border-bottom: 1rpx solid #eeeeee;
+  
+  &.no-border {
+    border-bottom: none;
+  }
+  &.tag-row {
+      align-items: center;
+  }
+  .label {
+    width: 140rpx;
+    font-size: 30rpx;
+    color: #333;
+    font-weight: bold;
+    padding-top: 4rpx; 
+  }
+  .input-box { flex: 1; }
+  .uni-input {
+    flex: 1;
+    font-size: 30rpx;
+    color: #333;
+  }
+  .placeholder {
+    color: #ccc;
+    font-size: 28rpx;
+  }
+}
+
+/* 地图选点样式 */
+.map-row {
+    .map-box {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        /* background: #f9f9f9; */
+        /* padding: 10rpx; */
+        border-radius: 8rpx;
+    }
+    .map-icon {
+        width: 32rpx;
+        height: 32rpx;
+        margin-right: 16rpx;
+    }
+    .map-text-box {
+        flex: 1;
+    }
+    .addr-text {
+        font-size: 30rpx;
+        color: #333;
+        font-weight: bold;
+    }
+    .arrow {
+        color: #ccc;
+        font-size: 32rpx;
+        margin-left: 10rpx;
+    }
+}
+
+/* 性别选择胶囊 */
+.gender-radio {
+  display: flex;
+  margin-top: 24rpx;
+  .radio-tag {
+    padding: 10rpx 40rpx;
+    margin-right: 20rpx;
+    border: 1rpx solid #e5e5e5;
+    border-radius: 40rpx;
+    font-size: 26rpx;
+    color: #666;
+    background: #fff;
+    &.active {
+      background: rgba(0, 170, 255, 0.1);
+      border-color: #00aaff;
+      color: #00aaff;
+      font-weight: bold;
+    }
+  }
+}
+
+/* 标签列表 */
+.tag-list {
+  display: flex;
+  .tag-item {
+    width: 100rpx;
+    height: 56rpx;
+    line-height: 56rpx;
+    text-align: center;
+    border: 1rpx solid #e5e5e5;
+    border-radius: 8rpx;
+    margin-right: 20rpx;
+    font-size: 26rpx;
+    color: #666;
+    &.active {
+      background: #00aaff;
+      border-color: #00aaff;
+      color: #fff;
+    }
+  }
+}
+
+/* 底部按钮区 */
+.footer-btn {
+  margin-top: 60rpx;
+  .btn-save {
+    background: linear-gradient(90deg, #00c6ff, #007aff);
+    color: #fff;
+    border-radius: 50rpx;
+    font-size: 32rpx;
+    height: 90rpx;
+    line-height: 90rpx;
+    box-shadow: 0 10rpx 20rpx rgba(0, 122, 255, 0.2);
+    &:active { opacity: 0.9; }
+  }
 }
 </style>

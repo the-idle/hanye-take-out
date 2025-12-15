@@ -15,6 +15,10 @@ spring:
       port: ${hanye.redis.port}
       password: ${hanye.redis.password}
       database: ${hanye.redis.database}
+  servlet:
+    multipart:
+      max-file-size: 2MB      # 单个文件最大大小
+      max-request-size: 2MB
 
 # ??mybatis
 mybatis:
@@ -26,6 +30,7 @@ mybatis:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
     # ??mybatis???????????  a_column = aColumn
     map-underscore-to-camel-case: true
+
 
 login-reg:
   jwt:

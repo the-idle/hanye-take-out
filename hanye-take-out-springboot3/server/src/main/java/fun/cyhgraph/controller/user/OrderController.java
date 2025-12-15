@@ -58,6 +58,21 @@ public class OrderController {
         return Result.success(orderPaymentVO);
     }
 
+    // 在 OrderController.java 中添加
+
+    /**
+     * 模拟支付（跳过微信支付，直接修改订单状态）
+     *
+     * @param orderPaymentDTO
+     * @return
+     */
+    @PutMapping("/payment/mock")
+    public Result paySuccess(@RequestBody OrderPaymentDTO orderPaymentDTO) throws Exception {
+        log.info("用户模拟支付订单：{}", orderPaymentDTO);
+        orderService.paySuccess(orderPaymentDTO.getOrderNumber());
+        return Result.success();
+    }
+
     /**
      * 根据id查询订单详情
      *

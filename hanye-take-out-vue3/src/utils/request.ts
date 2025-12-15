@@ -8,14 +8,14 @@ import { useUserInfoStore } from '@/store'
 const baseURL = '/api'
 const instance = axios.create({ baseURL })
 
-const userInfoStore = useUserInfoStore()
-
 // 1.定义"请求"拦截器(前端给后端服务器的请求)
 // api里每次调用request方法，都会触发一次请求拦截器
 instance.interceptors.request.use(
   (config) => {
     // config配置对象（要请求后台的参数都在这个对象上）
     // console.log('------请求拦截器-------')
+    // 在拦截器内部调用 store，确保 Pinia 已经初始化
+    const userInfoStore = useUserInfoStore()
     const token = userInfoStore.userInfo ? userInfoStore.userInfo.token : null
     // 在发起时要统一携带请求头Authorization和token值
     // 判断，登录和注册页面，pinia里无token，而且登录接口和注册接口也不需要携带token（其他页面需要——）
@@ -33,7 +33,7 @@ instance.interceptors.request.use(
 
 // 2.定义"响应"拦截器(后端服务器给前端的响应)
 instance.interceptors.response.use(
-  // 响应http状态码为 2xx,3xx 时触发成功的回调，形参中的 response 是“成功的结果”
+  // 响应http状态码为 2xx,3xx 时触发成功的回调，形参中的 response 是"成功的结果"
   (response) => {
     // console.log('------响应拦截器-------')
     console.log(response)
@@ -48,9 +48,11 @@ instance.interceptors.response.use(
   // 响应状态码是 4xx,5xx 时触发失败的回调
   (error) => {
     console.dir(error)
-    if (error.response.status === 401) {
+    if (error.response?.status === 401) {
       // 无效的 token (不存在，过期，伪造或者被修改)
       // token没用了，把 Pinia 中的一切重置为空，并跳转到登录页面(相当于没token的状态)
+      // 在拦截器内部调用 store，确保 Pinia 已经初始化
+      const userInfoStore = useUserInfoStore()
       userInfoStore.userInfo = null
       ElMessage.error('用户身份已过期~')
       router.push('/login') // js无法获取this.$router，所以要引入router来跳转

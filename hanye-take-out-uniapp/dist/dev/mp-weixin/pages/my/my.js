@@ -110,17 +110,17 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       });
     };
     const goAddress = () => {
-      common_vendor.index.redirectTo({
+      common_vendor.index.navigateTo({
         url: "/pages/address/address"
       });
     };
     const goHistory = () => {
-      common_vendor.index.redirectTo({
+      common_vendor.index.navigateTo({
         url: "/pages/history/history"
       });
     };
     const goMyself = () => {
-      common_vendor.index.redirectTo({
+      common_vendor.index.navigateTo({
         url: "/pages/updateMy/updateMy"
       });
     };
@@ -163,5 +163,5 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     };
   }
 });
-const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-d3687551"], ["__file", "D:/MyCode/public_project/hanye-take-out/hanye-take-out-uniapp/src/pages/my/my.vue"]]);
+const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-d3687551"], ["__file", "D:/opgames/waimai/hanye-take-out/hanye-take-out-uniapp/src/pages/my/my.vue"]]);
 wx.createPage(MiniProgramPage);

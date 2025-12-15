@@ -16,15 +16,34 @@
 
 <script lang="ts" setup>
 import {ref} from 'vue'
+import { onLoad, onShow } from '@dcloudio/uni-app' // 【确保引入 onLoad】
 
 const remark = ref('')
 
+// 【关键修改】在 onLoad 中读取参数，实现回显
+onLoad((options) => {
+  if (options && options.remark) {
+    remark.value = options.remark // 如果有传参过来，就回显
+  }
+})
+onShow(async () => {
+    // ...
+    const cacheRemark = uni.getStorageSync('order_remark') // Key 必须也是 'order_remark'
+    if (cacheRemark) {
+        remark.value = cacheRemark // 赋值给 submit.vue 里的 remark 变量
+        uni.removeStorageSync('order_remark') // 读完就删
+    }
+})
 // 返回提交页面，把备注信息传递给store
 const returnToSubmit = () => {
   console.log('remark', remark.value)
-  uni.redirectTo({
-    url: '/pages/submit/submit?remark=' + remark.value,
-  })
+    // 1. 存入缓存，供订单页读取
+    uni.setStorageSync('order_remark', remark.value)
+    
+    // 2. 返回上一级 (订单页)
+    uni.navigateBack({
+        delta: 1
+    })
 }
 </script>
 

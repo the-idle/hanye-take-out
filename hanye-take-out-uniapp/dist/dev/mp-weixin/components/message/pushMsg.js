@@ -32,7 +32,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     return (_ctx, _cache) => {
       return {
         a: common_vendor.o(confirm),
-        b: common_vendor.sr(popup, "54d005a0-0", {
+        b: common_vendor.sr(popup, "5d5ec6e2-0", {
           "k": "popup"
         }),
         c: common_vendor.p({
@@ -43,5 +43,5 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     };
   }
 });
-const Component = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__file", "D:/MyCode/public_project/hanye-take-out/hanye-take-out-uniapp/src/components/message/pushMsg.vue"]]);
+const Component = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__file", "D:/opgames/waimai/hanye-take-out/hanye-take-out-uniapp/src/components/message/pushMsg.vue"]]);
 wx.createComponent(Component);

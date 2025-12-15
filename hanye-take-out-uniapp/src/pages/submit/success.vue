@@ -43,7 +43,7 @@ const getHarfAnOur = () => {
 
 const toHome = () => {
   uni.switchTab({
-    url: '/pages/index/index',
+    url: '/pages/order/order',
   })
 }
 const toDetail = () => {

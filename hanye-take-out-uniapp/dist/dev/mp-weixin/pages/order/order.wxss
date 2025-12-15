@@ -1,3 +1,15 @@
+page {
+  height: 100%;
+  overflow: hidden;
+}
+.page-container.data-v-88bf5328 {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  /* 防止页面整体滚动 */
+  background-color: #fff;
+}
 .dialog.data-v-88bf5328 {
   position: fixed;
   width: 100%;
@@ -84,8 +96,11 @@
   justify-content: center;
 }
 .viewport.data-v-88bf5328 {
-  padding-top: 130px;
-  height: 100%;
+  flex: 1;
+  /* 自动占据剩余高度 */
+  height: 0;
+  /* 必须设置，触发 scroll-view 内部滚动 */
+  /* padding-top: 130px;  <-- 【重要】一定要删除或注释掉这一行！ */
   display: flex;
   flex-direction: column;
 }
@@ -741,4 +756,109 @@
   font-size: 40rpx;
   font-weight: bold;
   color: #fff;
+}
+.cart-bar.data-v-88bf5328 {
+  position: fixed;
+  bottom: 40rpx;
+  left: 30rpx;
+  right: 30rpx;
+  height: 100rpx;
+  background: #333;
+  border-radius: 50rpx;
+  display: flex;
+  align-items: center;
+  z-index: 999;
+  box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.3);
+}
+.cart-bar.empty.data-v-88bf5328 {
+  opacity: 0.95;
+}
+.cart-bar .icon-wrap.data-v-88bf5328 {
+  position: relative;
+  width: 100rpx;
+  height: 100rpx;
+  margin-top: -30rpx;
+  margin-left: 20rpx;
+}
+.cart-bar .icon-wrap .icon.data-v-88bf5328 {
+  width: 100%;
+  height: 100%;
+}
+.cart-bar .icon-wrap .badge.data-v-88bf5328 {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #ff4b33;
+  color: #fff;
+  font-size: 20rpx;
+  padding: 2rpx 10rpx;
+  border-radius: 20rpx;
+}
+.cart-bar .total-price.data-v-88bf5328 {
+  flex: 1;
+  color: #fff;
+  font-size: 36rpx;
+  font-weight: bold;
+  margin-left: 20rpx;
+}
+.cart-bar .total-price.gray.data-v-88bf5328 {
+  color: #999;
+}
+.cart-bar .btn.data-v-88bf5328 {
+  width: 200rpx;
+  height: 100%;
+  line-height: 100rpx;
+  text-align: center;
+  font-size: 30rpx;
+  font-weight: bold;
+  border-radius: 50rpx;
+}
+.cart-bar .btn.active.data-v-88bf5328 {
+  background: #00aaff;
+  color: #fff;
+}
+.cart-bar .btn.gray.data-v-88bf5328 {
+  background: #555;
+  color: #999;
+}
+/* 打烊全屏遮罩  */
+.closed-mask.data-v-88bf5328 {
+  position: absolute;
+  inset: 0;
+  z-index: 998;
+  /* 调整到 cart-bar  下面，这样就没问题了 */
+  background: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.closed-mask .tips.data-v-88bf5328 {
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 20rpx 40rpx;
+  border-radius: 10rpx;
+}
+.header-box.data-v-88bf5328 {
+  padding-bottom: 20rpx;
+  background-color: #22bbff;
+  padding-bottom: 100rpx;
+  z-index: 10;
+}
+.header-box .shop-card.data-v-88bf5328 {
+  background: #fff;
+  margin: 20rpx 30rpx 0 30rpx;
+  padding: 24rpx;
+  border-radius: 16rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.disabled-btn.data-v-88bf5328 {
+  background-color: #555 !important;
+  /* 灰色背景 */
+  color: #999 !important;
+  font-size: 26rpx !important;
+  pointer-events: none;
+  /* 禁止点击事件 */
 }

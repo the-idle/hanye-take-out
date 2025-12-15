@@ -12,11 +12,11 @@ export const getDishListAPI = (id: number) => {
 }
 
 /**
- * 分类列表-小程序
+ * 根据菜品id获取菜品详情
  */
 export const getDishByIdAPI = (id: number) => {
   return http<DishItem>({
     method: 'GET',
-    url: `/user/dish/dish/${id}`,
+    url: `/user/dish/${id}`,
   })
 }

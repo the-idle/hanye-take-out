@@ -9,7 +9,7 @@ const getDishListAPI = (id) => {
 const getDishByIdAPI = (id) => {
   return utils_http.http({
     method: "GET",
-    url: `/user/dish/dish/${id}`
+    url: `/user/dish/${id}`
   });
 };
 exports.getDishByIdAPI = getDishByIdAPI;

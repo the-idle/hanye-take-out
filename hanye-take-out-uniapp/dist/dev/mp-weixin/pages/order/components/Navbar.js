@@ -1,9 +1,5 @@
 "use strict";
 const common_vendor = require("../../../common/vendor.js");
-const common_assets = require("../../../common/assets.js");
-const api_shop = require("../../../api/shop.js");
-require("../../../utils/http.js");
-require("../../../stores/modules/user.js");
 if (!Array) {
   const _easycom_uni_icons2 = common_vendor.resolveComponent("uni-icons");
   _easycom_uni_icons2();
@@ -14,42 +10,61 @@ if (!Math) {
 }
 const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
   __name: "Navbar",
+  props: {
+    status: { type: Boolean },
+    shopConfig: {}
+  },
   setup(__props) {
-    const status = common_vendor.ref(true);
-    const { safeAreaInsets } = common_vendor.index.getSystemInfoSync();
-    common_vendor.onLoad(async () => {
-      const res = await api_shop.getStatusAPI();
-      console.log("店铺状态---------", res);
-      status.value = res.data === 1 ? true : false;
+    const props = __props;
+    const config = common_vendor.computed(() => {
+      return props.shopConfig || {
+        id: 1,
+        name: "",
+        address: "加载中...",
+        phone: "",
+        deliveryFee: 0,
+        deliveryStatus: 1,
+        packFee: 0,
+        packStatus: 1,
+        minOrderAmount: 0,
+        openingHours: "",
+        notice: "",
+        autoAccept: 0
+      };
     });
-    const back = () => {
-      common_vendor.index.switchTab({ url: "/pages/index/index" });
-    };
+    const { safeAreaInsets } = common_vendor.index.getSystemInfoSync();
     const phone = () => {
-      common_vendor.index.makePhoneCall({ phoneNumber: "1999" });
+      const phoneNumber = config.value.phone;
+      if (phoneNumber)
+        common_vendor.index.makePhoneCall({ phoneNumber });
     };
     return (_ctx, _cache) => {
       var _a;
-      return {
-        a: common_assets._imports_0$1,
-        b: common_vendor.o(back),
-        c: common_assets._imports_1,
-        d: ((_a = common_vendor.unref(safeAreaInsets)) == null ? void 0 : _a.top) + "px",
-        e: common_vendor.t(status.value === true ? "营业中" : "打烊中"),
+      return common_vendor.e({
+        a: ((_a = common_vendor.unref(safeAreaInsets)) == null ? void 0 : _a.top) + "px",
+        b: common_vendor.t(_ctx.status ? "营业中" : "打烊中"),
+        c: !_ctx.status ? 1 : "",
+        d: common_vendor.t(config.value.deliveryStatus === 1 ? config.value.deliveryFee : 0),
+        e: common_vendor.t(config.value.minOrderAmount),
         f: common_vendor.p({
-          ["custom-prefix"]: "iconfont",
-          type: "icon-qian",
-          size: "15"
+          type: "location",
+          size: "14",
+          color: "#666"
         }),
-        g: common_vendor.o(phone),
+        g: common_vendor.t(config.value.address),
         h: common_vendor.p({
-          ["custom-prefix"]: "iconfont",
-          type: "icon-dianhua",
-          size: "20"
-        })
-      };
+          type: "phone-filled",
+          size: "18",
+          color: "#00aaff"
+        }),
+        i: common_vendor.o(phone),
+        j: common_vendor.t(config.value.openingHours || "全天"),
+        k: config.value.notice
+      }, config.value.notice ? {
+        l: common_vendor.t(config.value.notice)
+      } : {});
     };
   }
 });
-const Component = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-e1a17746"], ["__file", "D:/MyCode/public_project/hanye-take-out/hanye-take-out-uniapp/src/pages/order/components/Navbar.vue"]]);
+const Component = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-e1a17746"], ["__file", "D:/opgames/waimai/hanye-take-out/hanye-take-out-uniapp/src/pages/order/components/Navbar.vue"]]);
 wx.createComponent(Component);

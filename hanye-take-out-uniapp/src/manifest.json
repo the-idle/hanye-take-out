@@ -1,6 +1,6 @@
 {
-    "name" : "",
-    "appid" : "",
+    "name" : "WAIMAI",
+    "appid" : "__UNI__BF2B983",
     "description" : "",
     "versionName" : "1.0.0",
     "versionCode" : "100",
@@ -50,11 +50,20 @@
     "quickapp" : {},
     /* 小程序特有相关 */
     "mp-weixin" : {
-        "appid" : "wxbd5d45c4c0860e6d",
+        "appid" : "wxbf3ebd0857f7228a",
         "setting" : {
             "urlCheck" : false
         },
-        "usingComponents" : true
+        "usingComponents" : true,
+		"permission": {
+			"scope.userLocation": {
+				"desc": "我们需要您的位置以判断是否在配送范围内"
+			}
+		},
+		"requiredPrivateInfos": [
+			"getLocation",
+			"chooseLocation"
+		]
     },
     "mp-alipay" : {
         "usingComponents" : true
@@ -65,8 +74,8 @@
     "mp-toutiao" : {
         "usingComponents" : true
     },
-    "uniStatistics": {  
-        "enable": false
+    "uniStatistics" : {
+        "enable" : false
     },
     "vueVersion" : "3"
 }

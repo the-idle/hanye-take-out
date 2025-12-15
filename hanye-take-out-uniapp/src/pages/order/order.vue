@@ -1,5 +1,6 @@
 <template>
-  <Navbar />
+	<view class="page-container">
+  <Navbar :status="status" :shopConfig="shopConfig" />
   <view class="viewport">
     <!-- 分类 -->
     <view class="categories">
@@ -91,9 +92,9 @@
       <image src="../../static/images/cart_empty.png" class="order_number_icon"></image>
     </view>
     <view class="order_price"> <text class="ico">￥</text> 0 </view>
-    <view class="order_btn"> ￥0起送 </view>
+    <view class="order_btn"> ￥{{ shopConfig.minOrderAmount || 0 }}起送 </view>
   </view>
-  <!-- 亮起的购物车 -->
+<!-- 亮起的购物车 -->
   <view class="footer_order_buttom" @click="() => (openCartList = !openCartList)" v-else>
     <view class="order_number">
       <image src="../../static/images/cart_active.png" class="order_number_icon"></image>
@@ -102,7 +103,18 @@
     <view class="order_price">
       <text class="ico">￥ </text> {{ parseFloat((Math.round(CartAllPrice * 100) / 100).toFixed(2)) }}
     </view>
-    <view class="order_btn_active" @click.stop="submitOrder()"> 去结算 </view>
+    
+     <!-- 【核心修改开始】 -->
+     <!-- 动态判断：如果总价 < 起送价，显示还差多少，且变灰；否则显示去结算 -->
+     <view 
+       class="order_btn_active" 
+       :class="{ 'disabled-btn': CartAllPrice < shopConfig.minOrderAmount }"
+       @click.stop="submitOrder()"
+     > 
+       {{ CartAllPrice >= shopConfig.minOrderAmount ? '去结算' : `差￥${(shopConfig.minOrderAmount - CartAllPrice).toFixed(1)}起送` }}
+     </view>
+     <!-- 【核心修改结束】 -->
+    
   </view>
 
   <!-- 底部购物车菜品列表 -->
@@ -142,13 +154,14 @@
     </view>
   </view>
 
-  <view v-show="!status" class="close" @click="goBack">
-    <view class="text">本店已打烊</view>
+<!-- <view v-show="!status" class="closed-mask">
+  <view class="tips">本店已打烊</view>
+</view> -->
   </view>
 </template>
 
 <script setup lang="ts">
-import {getStatusAPI} from '@/api/shop'
+import {getStatusAPI, getShopConfigAPI} from '@/api/shop'
 import {getCategoryAPI} from '@/api/category'
 import {getDishListAPI} from '@/api/dish'
 import {getSetmealListAPI} from '@/api/setmeal'
@@ -157,6 +170,7 @@ import type {CategoryItem} from '@/types/category'
 import type {DishItem, FlavorItem, DishToCartItem} from '@/types/dish'
 import type {SetmealItem} from '@/types/setmeal'
 import type {CartDTO, CartItem} from '@/types/cart'
+import type {ShopConfig} from '@/types/shop'
 import {onLoad, onShow} from '@dcloudio/uni-app'
 import {ref} from 'vue'
 import Navbar from './components/Navbar.vue'
@@ -164,6 +178,23 @@ import Navbar from './components/Navbar.vue'
 // ------ data ------
 // 店铺营业状态
 const status = ref(true)
+// 店铺配置
+const shopConfig = ref<ShopConfig>({
+  id: 1,
+  name: '',
+  address: '',
+  latitude: '',
+  longitude: '',
+  phone: '',
+  deliveryFee: 0,
+  deliveryStatus: 1,
+  packFee: 0,
+  packStatus: 1,
+  minOrderAmount: 0,
+  openingHours: '',
+  notice: '',
+  autoAccept: 0,
+})
 // 左侧分类列表
 const categoryList = ref<CategoryItem[]>([])
 // 高亮下标
@@ -210,13 +241,43 @@ const getDishOrSetmealList = async (index: number) => {
   dishList.value = res.data
 }
 
+// 获取店铺配置
+const getShopData = async () => {
+  try {
+    const res = await getShopConfigAPI()
+    if (res.code === 0 || res.code === 1) {
+      shopConfig.value = res.data
+    }
+  } catch (e) {
+    console.error('获取店铺配置失败', e)
+  }
+}
+
 // 查询获取购物车列表
 const getCartList = async () => {
   const res = await getCartAPI()
   console.log('初始化购物车列表', res)
   cartList.value = res.data
   CartAllNumber.value = cartList.value.reduce((acc, cur) => acc + cur.number, 0)
-  CartAllPrice.value = cartList.value.reduce((acc, cur) => acc + cur.amount * cur.number, 0)
+  
+  // 计算总价格（包含打包费和配送费）
+  const goodsPrice = cartList.value.reduce((acc, cur) => acc + cur.amount * cur.number, 0)
+  
+  // 计算打包费（如果开启）
+  let packPrice = 0
+  if (shopConfig.value.packStatus === 1) {
+    packPrice = CartAllNumber.value * Number(shopConfig.value.packFee)
+  }
+  
+  // 计算配送费（如果开启）
+  let deliveryPrice = 0
+  if (shopConfig.value.deliveryStatus === 1) {
+    deliveryPrice = Number(shopConfig.value.deliveryFee)
+  }
+  
+  // 总价 = 菜品 + 打包 + 配送
+  CartAllPrice.value = goodsPrice + packPrice + deliveryPrice
+  
   console.log('CartAllNumber', CartAllNumber.value)
   console.log('CartAllPrice', CartAllPrice.value)
   // 如果减少菜品导致购物车为空，关闭购物车列表
@@ -380,6 +441,17 @@ const clearCart = async () => {
 
 // 提交订单
 const submitOrder = () => {
+  if (!status.value) {
+	uni.showToast({
+	  title: '店铺已打烊，无法下单',
+	  icon: 'none'
+	})
+	return
+  }
+	// 1. 校验起送金额
+	if (CartAllPrice.value < shopConfig.value.minOrderAmount) {
+	  return // 金额不够，不执行跳转
+	}
   console.log('submitOrder')
   // 跳转到订单确认页面
   uni.navigateTo({
@@ -387,15 +459,25 @@ const submitOrder = () => {
   })
 }
 
-const goBack = () => {
-  uni.switchTab({url: '/pages/index/index'})
-}
+
 
 // 页面加载
 onLoad(async () => {
+	try {
   const res = await getStatusAPI()
   console.log('店铺状态---------', res)
-  status.value = res.data === 1 ? true : false
+    if (res.data && res.data === 1) {
+        status.value = true
+    } else {
+        status.value = false
+    }
+} catch (e) {
+    // 接口报错时，为了不影响演示，可以默认设为 true，或者 false
+    console.error(e)
+    status.value = true 
+  }
+  // 获取店铺配置（必须在获取购物车之前）
+  await getShopData()
   await getCategoryData()
   await getDishOrSetmealList(0) // 默认加载第一个分类下的菜品列表
   await getCartList() // 获取购物车列表(一开始为空)
@@ -407,6 +489,18 @@ onShow(async () => {
 </script>
 
 <style lang="less" scoped>
+:global(page) {
+height: 100%;
+overflow: hidden;
+}
+.page-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden; /* 防止页面整体滚动 */
+  background-color: #fff;
+}	
+
 .dialog {
   position: fixed;
   width: 100%;
@@ -501,8 +595,9 @@ onShow(async () => {
 }
 
 .viewport {
-  padding-top: 130px; // 上方为固定的简介栏，调整出一定高度来（不然不知道为啥fixed不占一段高度）
-  height: 100%;
+  flex: 1;            /* 自动占据剩余高度 */
+  height: 0;          /* 必须设置，触发 scroll-view 内部滚动 */
+  /* padding-top: 130px;  <-- 【重要】一定要删除或注释掉这一行！ */
   display: flex;
   flex-direction: column;
 }
@@ -1281,5 +1376,113 @@ onShow(async () => {
     font-weight: bold;
     color: #fff;
   }
+}
+.cart-bar {
+  position: fixed;
+  bottom: 40rpx;
+  left: 30rpx;
+  right: 30rpx;
+  height: 100rpx;
+  background: #333;
+  border-radius: 50rpx;
+  display: flex;
+  align-items: center;
+  z-index: 999;
+  box-shadow: 0 6rpx 20rpx rgba(0,0,0,0.3);
+
+  &.empty {
+    opacity: 0.95;
+  }
+
+  .icon-wrap {
+    position: relative;
+    width: 100rpx;
+    height: 100rpx;
+    margin-top: -30rpx;
+    margin-left: 20rpx;
+    .icon {
+      width: 100%;
+      height: 100%;
+    }
+    .badge {
+      position: absolute;
+      top: 0;
+      right: 0;
+      background: #ff4b33;
+      color: #fff;
+      font-size: 20rpx;
+      padding: 2rpx 10rpx;
+      border-radius: 20rpx;
+    }
+  }
+
+  .total-price {
+    flex: 1;
+    color: #fff;
+    font-size: 36rpx;
+    font-weight: bold;
+    margin-left: 20rpx;
+    &.gray {
+      color: #999;
+    }
+  }
+
+  .btn {
+    width: 200rpx;
+    height: 100%;
+    line-height: 100rpx;
+    text-align: center;
+    font-size: 30rpx;
+    font-weight: bold;
+    border-radius: 50rpx;
+    &.active {
+      background: #00aaff;
+      color: #fff;
+    }
+    &.gray {
+      background: #555;
+      color: #999;
+    }
+  }
+}
+/* 打烊全屏遮罩  */
+.closed-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 998; /* 调整到 cart-bar  下面，这样就没问题了 */
+  background: rgba(255,255,255,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  .tips {
+    background: rgba(0,0,0,0.7);
+    color: #fff;
+    padding: 20rpx 40rpx;
+    border-radius: 10rpx;
+  }
+}
+.header-box {
+  background-color: #22bbff;
+  padding-bottom: 20rpx;
+  z-index: 10;
+  .shop-card {
+    background: #fff;
+    margin: 20rpx 30rpx 0 30rpx;
+    padding: 24rpx;
+    border-radius: 16rpx;
+    box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+    background-color: #22bbff;
+    padding-bottom: 100rpx;  //  增加底部高度，让卡片能盖在上面
+    z-index: 10;
+}
+.disabled-btn {
+  background-color: #555 !important; /* 灰色背景 */
+  color: #999 !important;
+  font-size: 26rpx !important;
+  pointer-events: none; /* 禁止点击事件 */
 }
 </style>

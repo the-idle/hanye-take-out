@@ -1,379 +1,293 @@
 <template>
-  <view class="customer-box">
-    <view class="address" :style="{height: `calc(100% - 136rpx - ${statusBarHeight} - 44px - 20rpx)`}">
-      <view v-if="addressList && addressList.length > 0" class="address_content">
-        <!-- address列表 -->
-        <view class="address_liests" v-for="(item, index) in addressList" :key="index">
-          <!-- 上部 -->
-          <view class="list_item_top" @click="choseAddress(index, item)">
-            <!-- 左边 -->
-            <view class="item_left">
-              <!-- 地址 -->
-              <view class="details">
-                <text class="tag" :class="'tag' + trans(item.label as string)">{{
-                  getLableVal(item.label as string)
-                }}</text>
-                <text class="address_word"
-                  >{{ item.provinceName }}{{ item.cityName }}{{ item.districtName }}{{ item.detail }}</text
-                >
-              </view>
-              <!-- 性别及手机号 -->
-              <view class="sale">
-                <text class="name">{{ item.gender === 1 ? item.consignee + ' 男士' : item.consignee + ' 女士' }}</text>
-                <text class="num">{{ item.phone }}</text>
-              </view>
+  <view class="list-container">
+    <scroll-view scroll-y class="scroll-box">
+      <!-- 列表区域 -->
+      <view v-if="addressList && addressList.length > 0">
+        <view class="address-card" v-for="(item, index) in addressList" :key="index">
+            
+            <!-- 点击卡片：选中地址 (仅从下单页跳转来时有效) -->
+            <view class="card-content" @click="choseAddress(item)">
+                <view class="info-row">
+                    <text class="name">{{ item.consignee }}</text>
+                    <text class="phone">{{ item.phone }}</text>
+                    <text class="tag" v-if="item.label">{{ item.label }}</text>
+                </view>
+<view class="address-row">
+    <!-- 改为显示：地图选的点 + 门牌号 -->
+    <text style="font-weight: bold; margin-right: 10rpx;">{{ item.districtName }}</text>
+    <text>{{ item.detail }}</text>
+</view>
             </view>
-            <!-- 右边 -->
-            <view class="item_right">
-              <image @click.stop="addOrEdit('编辑', item)" class="edit" src="../../static/icon/edit.png"></image>
+
+            <!-- 分割线 -->
+            <view class="line"></view>
+
+            <!-- 操作区域 -->
+            <view class="action-bar">
+                <!-- 设为默认按钮 -->
+                <view class="radio-box" @click.stop="setDefault(item)">
+                    <radio 
+                        :checked="item.isDefault === 1" 
+                        color="#00aaff" 
+                        style="transform:scale(0.7)" 
+                        @click.stop="setDefault(item)" 
+                    />
+                    <text>默认地址</text>
+                </view>
+                
+                <!-- 编辑/删除按钮 -->
+                <view class="btn-group">
+                    <view class="action-btn" @click.stop="onEdit(item)">
+                        <image src="../../static/icon/edit.png" class="icon"></image>
+                        <text>编辑</text>
+                    </view>
+                    <view class="action-btn delete" @click.stop="onDelete(item)">
+                        <image src="../../static/icon/delete.png" class="icon"></image>
+                        <text>删除</text>
+                    </view>
+                </view>
             </view>
-          </view>
-          <!-- 下部 -->
-          <view class="list_item_bottom">
-            <!-- :checked="Number(item.id) === current" -->
-            <label class="radio" @click.stop="getRadio(index, item)">
-              <radio
-                class="item_radio"
-                v-if="testValue"
-                color="#22ccff"
-                :value="String(item.id)"
-                :checked="item.isDefault === 1"
-                @click.stop="getRadio(index, item)"
-              />设为默认地址
-            </label>
-          </view>
+
         </view>
-        <!-- 无地址展示 -->
-        <!-- <view v-if="addressList.length === 0" class="no_address">
-          <text class="no_word">暂无地址</text>
-        </view> -->
       </view>
-      <Empty v-else boxHeight="100%" textLabel="暂无地址"></Empty>
-      <view class="add_address">
-        <button class="add_btn" type="primary" :plain="true" @click="addOrEdit('新增', 0)">
-          <!-- <image class="img_btn" src="../../static/add.png"></image> -->
-          <text class="add-icon">+</text>
-          添加收货地址
-        </button>
-      </view>
+      
+      <!-- 空状态 -->
+      <Empty v-else textLabel="暂无收货地址"></Empty>
+      
+      <!-- 底部占位，防止被按钮遮挡 -->
+      <view style="height: 120rpx;"></view>
+    </scroll-view>
+
+    <!-- 底部按钮 -->
+    <view class="bottom-fixed">
+      <button class="add-btn" @click="onAdd">+ 新增收货地址</button>
     </view>
   </view>
 </template>
 
 <script lang="ts" setup>
-import {ref, onMounted, computed} from 'vue'
-import {getAddressListAPI, updateDefaultAddressAPI} from '@/api/address'
-import type {Address} from '@/types/address'
-import {useAddressStore} from '@/stores/modules/address'
+import { ref, computed } from 'vue'
+import { onLoad, onShow } from '@dcloudio/uni-app'
+import { deleteAddressAPI, getAddressListAPI, updateDefaultAddressAPI } from '@/api/address'
+import type { Address } from '@/types/address'
+import { useAddressStore } from '@/stores/modules/address'
 import Empty from '@/components/empty/Empty.vue'
 
+// ------ 1. 变量定义 ------
 const store = useAddressStore()
-
-const testValue = ref(true)
 const addressList = ref<Address[]>([])
 const addressBackUrl = store.addressBackUrl
-const statusBarHeight = computed(() => uni.getSystemInfoSync().statusBarHeight + 'px')
+const isFromOrder = ref(false)
 
-onMounted(() => {
+// ------ 2. 生命周期 ------
+// 使用 onShow 保证每次返回页面都刷新数据（比如从编辑页回来）
+onShow(() => {
   getAddressList()
 })
 
+// 2. 在 onLoad 里接收参数
+onLoad((options) => {
+    if (options.from === 'order') {
+        isFromOrder.value = true
+    }
+})
+// ------ 3. 核心方法 ------
+
+// 获取地址列表
 const getAddressList = async () => {
-  testValue.value = false
-  const res = await getAddressListAPI()
-  if (res.code === 0) {
-    testValue.value = true
-    addressList.value = res.data
+  try {
+      const res = await getAddressListAPI()
+      // 兼容 code=0 或 code=1，视你后端具体实现而定
+      if (res.code === 1 || res.code === 0) {
+        addressList.value = res.data || []
+      }
+  } catch (e) {
+      console.error('获取列表失败', e)
+      uni.showToast({ title: '加载失败', icon: 'none' })
   }
 }
 
-const goBack = () => {
-  console.log('this.addressBackUrl', addressBackUrl)
-  uni.redirectTo({
-    url: addressBackUrl,
+// 新增跳转
+const onAdd = () => {
+  uni.navigateTo({
+    url: '/pages/addOrEditAddress/addOrEditAddress'
   })
 }
 
-// 标签文字转数字
-const trans = (item: string) => {
-  if (item === '公司') {
-    return '1'
-  } else if (item === '家') {
-    return '2'
-  } else if (item === '学校') {
-    return '3'
-  } else {
-    return '4'
-  }
-}
-
-// 未选择标签时，默认展示其他
-const getLableVal = (item: string) => {
-  if (item === null) {
-    return '其他'
-  }
-  return item
-}
-
-// 编辑与新增，根据情况跳转不同页面
-const addOrEdit = (type: string, item: any) => {
-  if (type === '新增') {
-    uni.redirectTo({
-      url: '/pages/addOrEditAddress/addOrEditAddress',
-    })
-  } else {
-    console.log('我要去编辑地址页面！！！  item', item)
-    uni.redirectTo({
-      url: '/pages/addOrEditAddress/addOrEditAddress?type=' + '编辑' + '&' + 'id=' + item.id,
-    })
-  }
-}
-
-// 选择地址，并跳转回订单submit页面
-const choseAddress = (e: any, item: any) => {
-  console.log('addressBackUrl', addressBackUrl)
-  // 1、当前是从 个人中心-地址管理 页面跳转过来的，点击不用跳回订单页面
-  if (addressBackUrl !== '/pages/submit/submit') {
-    return false
-  }
-  // 2、有记录addressBackUrl，要跳回订单页面
-  uni.redirectTo({
-    url: '/pages/submit/submit?address=' + JSON.stringify(item),
+// 编辑跳转
+const onEdit = (item: any) => {
+  uni.navigateTo({
+    url: '/pages/addOrEditAddress/addOrEditAddress?type=编辑&id=' + item.id
   })
 }
 
-// 设置默认地址
-const getRadio = async (e: any, item: any) => {
-  // 提供默认接口
-  const res = await updateDefaultAddressAPI({id: item.id})
-  if (res.code === 0) {
-    uni.showToast({
-      title: '默认地址设置成功',
-      duration: 2000,
-      icon: 'none',
-    })
-    getAddressList()
+// 删除地址
+const onDelete = (item: any) => {
+  uni.showModal({
+    title: '提示',
+    content: '确定要删除该地址吗？',
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+            const apiRes = await deleteAddressAPI(item.id)
+            // 兼容不同的后端返回
+            if (apiRes.code === 1 || apiRes.code === 0) {
+                uni.showToast({ title: '删除成功', icon: 'none' })
+                getAddressList() // 刷新列表
+            } else {
+                uni.showToast({ title: apiRes.msg || '删除失败', icon: 'none' })
+            }
+        } catch(e) {
+            uni.showToast({ title: '删除出错', icon: 'none' })
+        }
+      }
+    }
+  })
+}
+
+// 设为默认
+const setDefault = async (item: any) => {
+  try {
+      const res = await updateDefaultAddressAPI({ id: item.id })
+      if (res.code === 1 || res.code === 0) {
+        uni.showToast({ title: '设置成功', icon: 'none' })
+        getAddressList() // 刷新列表，UI会自动更新选中状态
+      }
+  } catch (e) {
+      console.error('设置默认失败', e)
   }
+}
+
+// 3. 修改 choseAddress 方法
+const choseAddress = (item: any) => {
+  // 如果不是从订单页来的，点击无效，或者是去编辑
+  if (!isFromOrder.value) {
+    // 这里可以选择什么都不做，或者去编辑页
+    // onEdit(item); 
+    return 
+  }
+
+  // 如果是从订单页来的：
+  // A. 把选中的地址存入缓存
+  uni.setStorageSync('select_address', item)
+  
+  // B. 返回上一页 ( submit 页 )
+  uni.navigateBack({
+      delta: 1
+  })
 }
 </script>
-
-<style lang="less" scoped>
-.address {
-  width: 750rpx;
-
-  // height: calc(100% - 160rpx);
-  .address_content {
-    margin: 0 20rpx;
-    padding-bottom: 20rpx;
-    height: 100%;
-    overflow-y: auto;
-
-    // background: #f6f6f6;
-    .address_liests {
-      width: 100%;
-      height: 256rpx;
-      opacity: 1;
-      background: #ffffff;
-      border-radius: 12rpx;
-      display: flex;
-      display: flex;
-      flex-direction: column;
-      margin-top: 20rpx;
-      padding: 0 28rpx 0 12rpx;
-      box-sizing: border-box;
-
-      // 上部
-      .list_item_top {
-        flex: 1;
-        width: 100%;
-        height: 100%;
-        display: flex;
-
-        // 左边
-        .item_left {
-          flex: 1;
-          overflow: hidden;
-          margin-left: 12rpx;
-
-          // 地址
-          .details {
-            // margin-left: 24rpx;
-            margin-top: 42rpx;
-            display: flex;
-            height: 40rpx;
-            line-height: 40rpx;
-
-            // 标签
-            .tag {
-              width: 68rpx;
-              height: 40rpx;
-              line-height: 40rpx;
-              text-align: center;
-              border-radius: 4rpx;
-              background: #e1f1fe;
-              display: inline-block;
-              margin-right: 8rpx;
-              color: #333333;
-              font-size: 24rpx;
-              font-family: PingFangSC, PingFangSC-Regular;
-              font-weight: 400;
-            }
-
-            .tag2 {
-              background: #fef8e7;
-            }
-
-            .tag3 {
-              background: #e7fef8;
-            }
-
-            .tag4 {
-              background: #fee7e7;
-            }
-
-            // 地址描述
-            .address_word {
-              flex: 1;
-              font-size: 28rpx;
-              font-family: PingFangSC, PingFangSC-Regular;
-              font-weight: 400;
-              text-align: left;
-              color: #333333;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              white-space: nowrap;
-            }
-
-            // 不同标签展示不同背景色
-            .active {
-              background: #fef8e7;
-            }
-          }
-
-          // 姓名及手机号
-          .sale {
-            margin-top: 20rpx;
-
-            .name,
-            .num {
-              height: 40rpx;
-              opacity: 1;
-              font-size: 28rpx;
-              font-family: PingFangSC, PingFangSC-Regular;
-              font-weight: 400;
-              text-align: left;
-              color: #999999;
-              line-height: 40rpx;
-              letter-spacing: 0px;
-            }
-
-            .num {
-              margin-left: 20rpx;
-              // margin-top: 10rpx;
-            }
-          }
-        }
-
-        // 右边--编辑
-        .item_right {
-          width: 100rpx;
-          height: 100%;
-          line-height: 1;
-          text-align: right;
-          padding-right: 18rpx;
-
-          .edit {
-            width: 32rpx;
-            height: 32rpx;
-            margin-top: 80rpx;
-            margin-left: 20rpx;
-          }
-        }
-      }
-
-      // 下部
-      .list_item_bottom {
-        height: 80rpx;
-        line-height: 80rpx;
-        border-top: 1px solid #efefef;
-
-        .radio {
-          margin-left: 8rpx;
-          opacity: 1;
-          font-size: 26rpx;
-          font-family: PingFangSC, PingFangSC-Regular;
-          font-weight: 400;
-          text-align: left;
-          color: #333333;
-
-          .item_radio {
-            transform: scale(0.7);
-          }
-        }
-      }
-    }
-
-    // 暂无地址
-    .no_address {
-      // width: 730rpx;
-      margin: 0 auto;
-      height: 50rpx;
-
-      .no_word {
-        display: block;
-        text-align: center;
-        font-size: 32rpx;
-      }
-    }
-  }
-
-  .add_address {
-    position: fixed;
-    bottom: 0rpx;
-    left: 0;
-    margin: 0 auto;
-    background: #ffffff;
-    height: 136rpx;
+<style lang="scss" scoped>
+.list-container {
+    height: 100vh;
+    background-color: #f5f5f5;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 750rpx;
-
-    .add_btn {
-      width: 668rpx;
-      height: 72rpx;
-      line-height: 72rpx;
-      border-radius: 72rpx;
-      background: #22ccff;
-      border: 1px solid #22ccff;
-      opacity: 1;
-      font-size: 30rpx;
-      font-family: PingFangSC, PingFangSC-Medium;
-      font-weight: 500;
-      text-align: center;
-      color: #ffffff;
-      letter-spacing: 0px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      .add-icon {
-        font-size: 32rpx;
-        margin-right: 8rpx;
-        margin-bottom: 4rpx;
-      }
-
-      .img_btn {
-        width: 44rpx;
-        height: 44rpx;
-        vertical-align: middle;
-        margin-bottom: 8rpx;
-      }
-    }
-  }
+    flex-direction: column;
 }
 
-.customer-box {
-  height: 100vh;
+.scroll-box {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20rpx;
+    box-sizing: border-box;
+}
+
+/* 地址卡片 */
+.address-card {
+    background: #fff;
+    border-radius: 20rpx;
+    padding: 30rpx;
+    margin-bottom: 24rpx;
+    box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.03);
+}
+
+.card-content {
+    /* 点击区域大一点 */
+    padding-bottom: 20rpx;
+}
+
+.info-row {
+    margin-bottom: 16rpx;
+    font-size: 32rpx;
+    font-weight: bold;
+    color: #333;
+    
+    .phone { margin-left: 20rpx; font-weight: normal; color: #666; font-size: 28rpx;}
+    .tag { 
+        font-size: 20rpx; 
+        background: #e6f7ff; 
+        color: #00aaff; 
+        padding: 4rpx 10rpx; 
+        border-radius: 6rpx; 
+        margin-left: 10rpx;
+        font-weight: normal;
+        vertical-align: middle;
+    }
+}
+
+.address-row {
+    font-size: 28rpx;
+    color: #555;
+    line-height: 1.4;
+    margin-bottom: 10rpx;
+}
+
+.line { height: 1rpx; background: #f0f0f0; margin: 10rpx 0 20rpx 0; }
+
+.action-bar {
+    height: 60rpx;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 26rpx;
+    color: #666;
+}
+
+.radio-box {
+    display: flex;
+    align-items: center;
+    /* 扩大点击范围 */
+    padding: 10rpx 20rpx 10rpx 0;
+    
+    text {
+        font-size: 26rpx;
+        color: #666;
+        margin-left: 10rpx;
+    }
+}
+
+.btn-group {
+    display: flex;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    margin-left: 30rpx;
+    padding: 10rpx;
+    font-size: 26rpx;
+    color: #666;
+    
+    .icon { width: 32rpx; height: 32rpx; margin-right: 6rpx; }
+    &.delete { color: #ff4d4f; }
+}
+
+/* 底部按钮 */
+.bottom-fixed {
+    background: #fff;
+    padding: 20rpx 40rpx;
+    padding-bottom: calc(20rpx + constant(safe-area-inset-bottom));
+    padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+    box-shadow: 0 -4rpx 16rpx rgba(0,0,0,0.05);
+    
+    .add-btn {
+        background: linear-gradient(90deg, #00c6ff, #007aff);
+        color: #fff;
+        border-radius: 50rpx;
+        font-size: 32rpx;
+        height: 88rpx;
+        line-height: 88rpx;
+        border: none;
+    }
 }
 </style>

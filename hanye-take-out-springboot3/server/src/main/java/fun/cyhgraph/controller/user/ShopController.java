@@ -1,5 +1,7 @@
 package fun.cyhgraph.controller.user;
 
+import fun.cyhgraph.entity.ShopConfig;
+import fun.cyhgraph.mapper.ShopConfigMapper;
 import fun.cyhgraph.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +18,9 @@ public class ShopController {
     @Autowired
     private RedisTemplate redisTemplate;
 
+    @Autowired
+    private ShopConfigMapper shopConfigMapper;
+
     public static final String KEY = "SHOP_STATUS";
 
     @GetMapping("/status")
@@ -23,5 +28,15 @@ public class ShopController {
         Integer status =  (Integer)redisTemplate.opsForValue().get(KEY);
         log.info("当前店铺状态为：{}", status == 1 ? "营业中" : "打烊中");
         return Result.success(status);
+    }
+
+    /**
+     * 获取店铺配置
+     */
+    @GetMapping("/config")
+    public Result<ShopConfig> getConfig() {
+        ShopConfig config = shopConfigMapper.get();
+        log.info("获取店铺配置：{}", config);
+        return Result.success(config);
     }
 }

@@ -5,7 +5,7 @@ import { addDishAPI, getDishByIdAPI, updateDishAPI } from '@/api/dish'
 import { getCategoryPageListAPI } from '@/api/category'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-
+import axios from 'axios' 
 // ------ 数据 ------
 // 固定死数据，应该不用响应式吧？
 const dishFlavorsData = [
@@ -81,27 +81,86 @@ const chooseImg = () => {
 }
 
 // 在文件管理器中选择图片后触发的改变事件：预览
-const onFileChange1 = (e: Event) => {
-  // 获取用户选择的文件列表（伪数组）
-  console.log(e)
-  const target = e.target as HTMLInputElement
-  const files = target.files;
+const onFileChange1 = async (e) => {
+  const target = e.target
+  const files = target.files
+  
   if (files && files.length > 0) {
-    // 选择了图片
-    console.log(files[0])
-    // 文件 -> base64字符串  (可以发给后台)
-    // 1. 创建 FileReader 对象
-    const fr = new FileReader()
-    // 2. 调用 readAsDataURL 函数，读取文件内容
-    fr.readAsDataURL(files[0])
-    // 3. 监听 fr 的 onload 事件，文件转为base64字符串成功后会触发该事件
-    fr.onload = () => {
-      // 4. 通过 e.target.result 获取到读取的结果，值是字符串（base64 格式的字符串）
-      form.pic = fr.result as string
-      console.log('avatar')
-      console.log(form.pic)
+    let file = files[0]
+
+    // 1. 格式限制
+    const isJPG = file.type === 'image/jpeg' || file.type === 'image/png'
+    if (!isJPG) {
+      ElMessage.error('上传图片只能是 JPG/PNG 格式!')
+      return
+    }
+
+    // 2. 压缩逻辑 (如果大于 500KB 就压缩)
+    if (file.size / 1024 > 500) {
+        console.log('图片大于500KB，正在压缩...')
+        try {
+            // 压缩质量 0.5
+            file = await compressImage(file, 0.5) 
+            console.log('压缩后大小:', (file.size / 1024).toFixed(2), 'KB')
+        } catch (err) {
+            console.error('压缩失败', err)
+        }
+    }
+
+    // 3. 最终大小限制 (压缩后依然大于 500KB 则拦截)
+    if (file.size / 1024 > 500) {
+      ElMessage.error('图片压缩后依然超过 500KB，请上传更小的图片!')
+      return
+    }
+
+    // 4. 上传到后端
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      // 这里的地址必须是你 Java 后端的地址
+      const res = await axios.post('http://localhost:8081/common/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+
+      if (res.data.code === 0) {
+        form.pic = res.data.data
+        ElMessage.success('上传成功')
+      } else {
+        ElMessage.error(res.data.msg || '上传失败')
+      }
+    } catch (err) {
+      console.error(err)
+      ElMessage.error('上传接口连接失败 (Axios Error)')
     }
   }
+}
+// 辅助函数：图片压缩
+const compressImage = (file, quality = 0.6) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = (e) => {
+      const img = new Image()
+      img.src = e.target.result
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        // 保持宽高比，或者限制最大宽度
+        canvas.width = img.width
+        canvas.height = img.height
+        
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        
+        // 压缩核心：quality 0-1 之间
+        canvas.toBlob((blob) => {
+          // 将 blob 转回 File 对象
+          const newFile = new File([blob], file.name, { type: file.type })
+          resolve(newFile)
+        }, file.type, quality)
+      }
+    }
+  })
 }
 
 // 按钮 - 添加口味

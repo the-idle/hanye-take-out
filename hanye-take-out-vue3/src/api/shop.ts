@@ -24,3 +24,27 @@ export const fixStatusAPI = (status: number) => {
     method: 'put'
   })
 }
+
+/**
+ * 获取店铺配置接口
+ * @returns
+ */
+export const getConfigAPI = () => {
+  return request({
+    url: '/shop/config',
+    method: 'get'
+  })
+}
+
+/**
+ * 保存店铺配置接口
+ * @param data 店铺配置数据
+ * @returns
+ */
+export const saveConfigAPI = (data: any) => {
+  return request({
+    url: '/shop/config',
+    method: 'put',
+    data
+  })
+}

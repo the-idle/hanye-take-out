@@ -1,5 +1,6 @@
 package fun.cyhgraph.service.serviceImpl;
 
+import fun.cyhgraph.entity.Order;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -28,6 +29,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
@@ -54,6 +56,8 @@ public class OrderServiceImpl implements OrderService {
     private WeChatPayUtil weChatPayUtil;
     @Autowired
     private UserMapper userMapper;
+    @Autowired
+    private ShopConfigMapper shopConfigMapper;
     private Order order;
     @Autowired
     private WebSocketServer webSocketServer;
@@ -65,19 +69,25 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * 用户下单
-     *
-     * @param orderSubmitDTO
-     * @return
      */
+    @Transactional // 建议加上事务注解，保证数据一致性
     public OrderSubmitVO submit(OrderSubmitDTO orderSubmitDTO) {
-        // 1、查询校验地址情况
+        // --- 0. 获取店铺配置 (新增步骤) ---
+        ShopConfig config = shopConfigMapper.get();
+
+        // 1. 查询校验地址情况
         AddressBook addressBook = addressBookMapper.getById(orderSubmitDTO.getAddressId());
         if (addressBook == null) {
             throw new AddressBookBusinessException(MessageConstant.ADDRESS_BOOK_IS_NULL);
         }
-        // 不能超出配送范围
-        // checkOutOfRange(addressBook.getCityName() + addressBook.getDistrictName() + addressBook.getDetail());
-        // 2、查询校验购物车情况
+
+        // 优化地址显示：拼上省市区，防止只显示门牌号
+        String fullAddress = (addressBook.getProvinceName() == null ? "" : addressBook.getProvinceName()) +
+                (addressBook.getCityName() == null ? "" : addressBook.getCityName()) +
+                (addressBook.getDistrictName() == null ? "" : addressBook.getDistrictName()) +
+                (addressBook.getDetail() == null ? "" : addressBook.getDetail());
+
+        // 2. 查询校验购物车情况
         Integer userId = BaseContext.getCurrentId();
         Cart cart = new Cart();
         cart.setUserId(userId);
@@ -85,43 +95,89 @@ public class OrderServiceImpl implements OrderService {
         if (cartList == null || cartList.isEmpty()) {
             throw new ShoppingCartBusinessException(MessageConstant.CART_IS_NULL);
         }
-        // 3、构建订单数据
+
+        // --- 3. 核心：后端重新计算金额 (安全校验) ---
+
+        // 3.1 算出购物车商品总价 和 商品总数量
+        BigDecimal itemsTotal = BigDecimal.ZERO; // 商品总价
+        int totalNum = 0; // 商品总数
+
+        for (Cart c : cartList) {
+            // 单价 * 数量
+            BigDecimal itemAmount = c.getAmount().multiply(new BigDecimal(c.getNumber()));
+            itemsTotal = itemsTotal.add(itemAmount);
+            totalNum += c.getNumber();
+        }
+
+        // 3.2 校验起送金额
+        if (itemsTotal.compareTo(config.getMinOrderAmount()) < 0) {
+            throw new OrderBusinessException("未达到起送金额: " + config.getMinOrderAmount() + "元");
+        }
+
+        // 3.3 计算打包费 (如果开启)
+        BigDecimal packFee = BigDecimal.ZERO;
+        if (config.getPackStatus() == 1) {
+            // 假设打包费是按商品数量算的：单价 * 总数量
+            // 这里的 totalNum 对应前端的 CartAllNumber
+            packFee = config.getPackFee().multiply(new BigDecimal(totalNum));
+        }
+
+        // 3.4 计算配送费 (如果开启)
+        BigDecimal deliveryFee = BigDecimal.ZERO;
+        if (config.getDeliveryStatus() == 1) {
+            deliveryFee = config.getDeliveryFee();
+        }
+
+        // 3.5 计算最终总金额 = 商品 + 打包 + 配送
+        BigDecimal finalAmount = itemsTotal.add(packFee).add(deliveryFee);
+
+
+        // --- 4. 构建订单数据 ---
         Order order = new Order();
+        // 复制基本属性 (备注、支付方式等)
         BeanUtils.copyProperties(orderSubmitDTO, order);
+
+        // 【关键】覆盖金额，不信任前端传的 amount
+        order.setAmount(finalAmount);
+        // 记录打包费 (假设你的Order表有这个字段存金额，如果没有存的是数量，请根据实际情况改)
+        // 这里假设 packAmount 存的是金额，如果是数量则 order.setPackAmount(totalNum)
+        // 根据你前端 params.packAmount 传的是数量，后端数据库如果 pack_amount 是 int 类型存数量：
+        order.setPackAmount(totalNum);
+        // 或者如果数据库里有 pack_fee 字段存金额，就 setPackFee(packFee)
+
         order.setAddressBookId(orderSubmitDTO.getAddressId());
         order.setPhone(addressBook.getPhone());
-        order.setAddress(addressBook.getDetail());
+        order.setAddress(fullAddress); // 使用拼接好的全地址
         order.setConsignee(addressBook.getConsignee());
-        // 利用时间戳来生成当前订单的编号
         order.setNumber(String.valueOf(System.currentTimeMillis()));
         order.setUserId(userId);
-        order.setStatus(Order.PENDING_PAYMENT); // 刚下单提交，此时是待付款状态
-        order.setPayStatus(Order.UN_PAID); // 未支付
+        order.setStatus(Order.PENDING_PAYMENT);
+        order.setPayStatus(Order.UN_PAID);
         order.setOrderTime(LocalDateTime.now());
-        this.order = order;
-        // 4、向订单表插入1条数据
+
+        // 4.1 插入订单
         orderMapper.insert(order);
-        // 订单明细数据
+
+        // --- 5. 处理订单明细 ---
         List<OrderDetail> orderDetailList = new ArrayList<>();
-        // 遍历购物车中所有的商品，逐个加到订单明细表
         for (Cart c : cartList) {
             OrderDetail orderDetail = new OrderDetail();
             BeanUtils.copyProperties(c, orderDetail);
             orderDetail.setOrderId(order.getId());
             orderDetailList.add(orderDetail);
         }
-        // 5、向明细表插入n条数据
         orderDetailMapper.insertBatch(orderDetailList);
-        // 6、清理购物车中的数据
+
+        // 6. 清理购物车
         cartMapper.delete(userId);
-        // 7、封装返回结果
-        OrderSubmitVO orderSubmitVO = OrderSubmitVO.builder()
+
+        // 7. 封装返回结果
+        return OrderSubmitVO.builder()
                 .id(order.getId())
                 .orderNumber(order.getNumber())
                 .orderAmount(order.getAmount())
                 .orderTime(order.getOrderTime())
                 .build();
-        return orderSubmitVO;
     }
 
     /**
@@ -284,6 +340,44 @@ public class OrderServiceImpl implements OrderService {
         webSocketServer.sendToAllClient(json);
 
         return vo;
+    }
+
+
+    /**
+     * 模拟支付成功，直接修改数据库状态，并通知商家
+     */
+    public void paySuccess(String orderNumber) {
+        // 1. 根据订单号查询当前用户的订单
+        // (假设你的Mapper有一个根据订单号查询的方法，如果没有，用getByNumber或类似于select * from orders where number = ?)
+        Order orderDB = orderMapper.getByNumber(orderNumber);
+
+        // 如果查不到或者状态不对，可以抛个异常
+        if (orderDB == null) {
+            throw new OrderBusinessException("订单不存在");
+        }
+
+        // 2. 准备更新的数据
+        Order orders = Order.builder()
+                .id(orderDB.getId())
+                .status(Order.TO_BE_CONFIRMED) // 状态转为：待接单 (2)
+                .payStatus(Order.PAID)         // 支付状态：已支付 (1)
+                .checkoutTime(LocalDateTime.now()) // 结账时间
+                .build();
+
+        // 3. 更新数据库
+        orderMapper.update(orders);
+
+        // 4. 通过WebSocket向商家端推送消息 (语音播报：您有新的订单)
+        Map map = new HashMap();
+        map.put("type", 1); // 消息类型，1表示来单提醒
+        map.put("orderId", orderDB.getId());
+        map.put("content", "订单号：" + orderNumber);
+
+        // 转成JSON发送
+        String json = JSON.toJSONString(map);
+        webSocketServer.sendToAllClient(json);
+
+        log.info("模拟支付完成，已通知商家：{}", json);
     }
 
     /**

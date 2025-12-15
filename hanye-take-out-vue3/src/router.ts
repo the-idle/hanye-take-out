@@ -73,7 +73,12 @@ const router = createRouter({
           path: 'employee/update',
           name: 'employee_update',
           component: () => import('./views/employee/update.vue')
-        }
+        },
+        {
+          path: 'shop',
+          name: 'Shop',
+          component: () => import('./views/shop/config.vue'),
+        },
       ]
     },
     {

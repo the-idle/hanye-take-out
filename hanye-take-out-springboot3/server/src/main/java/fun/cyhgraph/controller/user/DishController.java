@@ -2,10 +2,14 @@ package fun.cyhgraph.controller.user;
 
 import fun.cyhgraph.constant.StatusConstant;
 import fun.cyhgraph.entity.Dish;
+import fun.cyhgraph.entity.DishFlavor;
+import fun.cyhgraph.mapper.DishFlavorMapper;
+import fun.cyhgraph.mapper.DishMapper;
 import fun.cyhgraph.result.Result;
 import fun.cyhgraph.service.DishService;
 import fun.cyhgraph.vo.DishVO;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController("userDishController")
@@ -24,7 +29,10 @@ public class DishController {
     private DishService dishService;
     @Autowired
     private RedisTemplate redisTemplate;
-
+    @Autowired
+    private DishMapper dishMapper;
+    @Autowired
+    private DishFlavorMapper dishFlavorMapper;
     /**
      * 根据分类id查询该分类下的所有菜品
      *
@@ -57,7 +65,7 @@ public class DishController {
      * @param id
      * @return
      */
-    @GetMapping("/dish/{id}")
+    @GetMapping("/{id}")
     public Result<DishVO> getDish(@PathVariable Integer id) {
         log.info("用户根据菜品id查询菜品详情和对应口味：{}", id);
         DishVO dishVO = dishService.getDishWithFlavorById(id);

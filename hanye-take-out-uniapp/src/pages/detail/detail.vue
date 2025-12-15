@@ -1,150 +1,171 @@
 <template>
-  <!-- 菜品详情，包括口味 -->
-  <view class="dish" v-if="dish">
-    <view class="title">菜品详情</view>
-    <image class="image" :src="dish.pic" mode="aspectFill" />
-    <view class="dishinfo">
-      <view class="name ellipsis">{{ dish.name }}</view>
-      <view class="detail ellipsis">{{ dish.detail }}</view>
-      <view class="price">
-        <text class="symbol">¥</text>
-        <text class="number">{{ dish.price }}</text>
-      </view>
-      <!-- 1、选择规格(口味) -->
-      <image
-        v-if="dish && 'flavors' in dish && dish.flavors.length > 0"
-        class="choosenorm"
-        src="../../static/images/选择规格.png"
-        @tap.stop="chooseNorm(dish as DishItem)"
-        mode="scaleToFill"
-      />
-      <!-- 2、加减菜品 -->
-      <view v-else class="sub_add">
-        <!-- 减菜按钮 -->
-        <image
-          v-if="getCopies(dish) > 0"
-          src="../../static/icon/sub.png"
-          @tap.stop="subDishAction(dish, '菜品')"
-          class="sub"
-        ></image>
-        <!-- 菜品份数 -->
-        <text v-if="getCopies(dish) > 0" class="dish_number">{{ getCopies(dish) }}</text>
-        <!-- 加菜按钮 -->
-        <image src="../../static/icon/add.png" @tap.stop="addDishAction(dish, '菜品')" class="add" />
-      </view>
+  <view class="container">
+    
+    <!-- 1. 顶部大图背景区域 -->
+    <view class="header-banner">
+      <!-- 菜品图片 -->
+      <image v-if="dish" class="banner-img" :src="dish.pic" mode="aspectFill" />
+      <image v-else-if="setmeal" class="banner-img" :src="setmeal.pic" mode="aspectFill" />
+      <!-- 渐变遮罩，为了字看清楚 -->
+      <view class="mask"></view>
     </view>
-  </view>
-  <!-- 套餐详情，包括该套餐下所有菜品 -->
-  <view class="setmeal" v-if="setmeal">
-    <view class="title">套餐详情</view>
-    <!-- 菜品列表 -->
-    <view v-for="item in setmeal.setmealDishes" :key="item.name" class="setmeal_item">
-      <image :src="item.pic" />
-      <view class="dishinfo">
-        <view class="name ellipsis">{{ item.name }}</view>
-        <view class="detail ellipsis">{{ item.detail }}</view>
-      </view>
-    </view>
-    <!-- 套餐信息 -->
-    <view class="setmeal_info">
-      <view class="detail ellipsis">{{ setmeal.detail }}</view>
-      <view class="price">
-        <text class="symbol">¥</text>
-        <text class="number">{{ setmeal?.price }}</text>
-      </view>
-      <!-- 加减菜品 -->
-      <view class="sub_add">
-        <!-- 减菜按钮 -->
-        <image
-          v-if="getCopies(setmeal) > 0"
-          src="../../static/icon/sub.png"
-          @tap.stop="subDishAction(setmeal, '套餐')"
-          class="sub"
-        ></image>
-        <!-- 菜品份数 -->
-        <text v-if="getCopies(setmeal) > 0" class="dish_number">{{ getCopies(setmeal) }}</text>
-        <!-- 加菜按钮 -->
-        <image src="../../static/icon/add.png" @tap.stop="addDishAction(setmeal, '套餐')" class="add" />
-      </view>
-    </view>
-  </view>
 
-  <!-- 选择菜品规格dialog弹窗 -->
-  <view class="dialog" v-show="visible">
-    <view class="flavor_pop">
-      <view class="title">选择规格</view>
-      <scroll-view class="scroll" scroll-y>
-        <view v-for="flavor in flavors" :key="flavor.name" class="flavor">
-          <view>{{ flavor.name }}</view>
-          <view
-            :class="{flavorItem: true, active: chosedflavors.findIndex((it) => item === it) !== -1}"
-            v-for="(item, index) in JSON.parse(flavor.list)"
-            :key="index"
-            @tap="chooseFlavor(JSON.parse(flavor.list), item)"
-          >
-            {{ item }}
-          </view>
+    <!-- 2. 内容卡片区域 (上浮) -->
+    <view class="content-card">
+      
+      <!-- A. 菜品/套餐 基础信息 -->
+      <view class="basic-info" v-if="dish || setmeal">
+        <view class="name-row">
+          <text class="dish-name">{{ dish ? dish.name : setmeal?.name }}</text>
         </view>
-      </scroll-view>
-      <view class="addToCart" @tap="addToCart(dialogDish as DishToCartItem)">加入购物车</view>
-    </view>
-  </view>
-
-  <!-- 灰色空购物车 -->
-  <view class="footer_order_buttom" v-if="cartList.length === 0">
-    <view class="order_number">
-      <image src="../../static/images/cart_empty.png" class="order_number_icon"></image>
-    </view>
-    <view class="order_price"> <text class="ico">￥</text> 0 </view>
-    <view class="order_btn"> ￥0起送 </view>
-  </view>
-  <!-- 亮起的购物车 -->
-  <view class="footer_order_buttom" @click="() => (openCartList = !openCartList)" v-else>
-    <view class="order_number">
-      <image src="../../static/images/cart_active.png" class="order_number_icon"></image>
-      <view class="order_dish_num"> {{ CartAllNumber }} </view>
-    </view>
-    <view class="order_price">
-      <text class="ico">￥ </text> {{ parseFloat((Math.round(CartAllPrice * 100) / 100).toFixed(2)) }}
-    </view>
-    <view class="order_btn_active" @click.stop="submitOrder()"> 去结算 </view>
-  </view>
-
-  <!-- 底部购物车菜品列表 -->
-  <view class="pop_mask" v-show="openCartList" @click="openCartList = !openCartList">
-    <view class="cart_pop" @click.stop="openCartList = openCartList">
-      <view class="top_title">
-        <view class="tit"> 购物车 </view>
-        <view class="clear" @click.stop="clearCart()">
-          <image class="clear_icon" src="../../static/icon/clear.png"></image>
-          <text class="clear-des">清空 </text>
+        <view class="desc-row">
+          <text class="dish-desc">{{ dish ? dish.detail : setmeal?.detail }}</text>
         </view>
-      </view>
-      <scroll-view class="card_order_list" scroll-y scroll-top="40rpx">
-        <view class="type_item" v-for="(obj, index) in cartList" :key="index">
-          <view class="dish_img">
-            <image mode="aspectFill" :src="obj.pic" class="dish_img_url"></image>
+        
+        <!-- 价格与操作行 -->
+        <view class="price-action-row">
+          <view class="price-box">
+            <text class="symbol">¥</text>
+            <text class="num">{{ dish ? dish.price : setmeal?.price }}</text>
           </view>
-          <view class="dish_info">
-            <view class="dish_name"> {{ obj.name }} </view>
-            <view class="dish_price"> <text class="ico">￥</text> {{ obj.amount }} </view>
-            <view class="dish_flavor"> {{ obj.dishFlavor }} </view>
-            <view class="dish_active">
-              <image
-                v-if="obj.number && obj.number > 0"
-                src="../../static/icon/sub.png"
-                @click.stop="subDishAction(obj, '购物车')"
-                class="dish_sub"
-              ></image>
-              <text v-if="obj.number && obj.number > 0" class="dish_number">{{ obj.number }}</text>
-              <image src="../../static/icon/add.png" class="dish_add" @click.stop="addDishAction(obj, '购物车')">
-              </image>
+          
+          <!-- 操作按钮组 -->
+          <view class="action-box">
+            <!-- 情况1：有多口味，选规格 -->
+            <view 
+              v-if="dish && dish.flavors && dish.flavors.length > 0" 
+              class="spec-btn" 
+              @tap.stop="chooseNorm(dish as DishItem)"
+            >
+              选规格
+              <view v-if="getCopies(dish) > 0" class="badge">{{ getCopies(dish) }}</view>
+            </view>
+            
+            <!-- 情况2：无多口味，直接加减 -->
+            <view v-else class="stepper">
+              <view 
+                v-if="getCopies(dish || setmeal!) > 0" 
+                class="btn minus" 
+                @tap.stop="subDishAction(dish || setmeal!, dish ? '菜品' : '套餐')"
+              >-</view>
+              
+              <text v-if="getCopies(dish || setmeal!) > 0" class="count">
+                {{ getCopies(dish || setmeal!) }}
+              </text>
+              
+              <view 
+                class="btn plus" 
+                @tap.stop="addDishAction(dish || setmeal!, dish ? '菜品' : '套餐')"
+              >+</view>
             </view>
           </view>
         </view>
-        <view class="seize_seat"></view>
-      </scroll-view>
+      </view>
+
+      <!-- B. 如果是套餐，展示包含的菜品 -->
+      <view class="setmeal-list" v-if="setmeal && setmeal.setmealDishes && setmeal.setmealDishes.length > 0">
+        <view class="section-title">套餐包含</view>
+        <view class="sub-item" v-for="(item, index) in setmeal.setmealDishes" :key="index">
+          <image class="sub-img" :src="item.pic" mode="aspectFill"></image>
+          <view class="sub-info">
+            <text class="sub-name">{{ item.name }}</text>
+            <text class="sub-count">x{{ item.copies }}</text>
+            <text class="sub-desc">{{ item.detail || '暂无描述' }}</text>
+          </view>
+        </view>
+      </view>
+      
+      <!-- 底部垫高 -->
+      <view style="height: 160rpx;"></view>
     </view>
+
+    <!-- 3. 底部悬浮购物车栏 (保持你原有的逻辑，只改样式) -->
+    <view class="footer-bar">
+      <!-- 空购物车 -->
+      <view class="cart-box empty" v-if="cartList.length === 0">
+        <view class="icon-wrap">
+          <image src="../../static/images/cart_empty.png" class="icon"></image>
+        </view>
+        <view class="tips">未选购商品</view>
+        <view class="btn disabled">¥0起送</view>
+      </view>
+      
+      <!-- 有商品 -->
+      <view class="cart-box active" v-else @click="openCartList = !openCartList">
+        <view class="icon-wrap">
+          <image src="../../static/images/cart_active.png" class="icon"></image>
+          <view class="badge">{{ CartAllNumber }}</view>
+        </view>
+        <view class="price-info">
+          <view class="total">¥<text class="big">{{ parseFloat((Math.round(CartAllPrice * 100) / 100).toFixed(2)) }}</text></view>
+          <view class="delivery">预估配送费</view>
+        </view>
+        <view class="btn submit" @click.stop="submitOrder">去结算</view>
+      </view>
+    </view>
+
+    <!-- 4. 规格弹窗 (美化版) -->
+    <view class="popup-mask" v-if="visible" @click="visible = false">
+      <view class="popup-content" @click.stop>
+        <view class="popup-header">
+          <text class="tit">选择规格</text>
+          <text class="close" @click="visible = false">×</text>
+        </view>
+        
+        <scroll-view scroll-y class="popup-scroll">
+          <view class="flavor-group" v-for="flavor in flavors" :key="flavor.name">
+            <view class="flavor-name">{{ flavor.name }}</view>
+            <view class="flavor-tags">
+              <view
+                class="tag"
+                :class="{ active: chosedflavors.includes(item) }"
+                v-for="(item, index) in JSON.parse(flavor.list)"
+                :key="index"
+                @tap="chooseFlavor(JSON.parse(flavor.list), item)"
+              >
+                {{ item }}
+              </view>
+            </view>
+          </view>
+        </scroll-view>
+        
+        <view class="popup-footer">
+          <view class="price">¥{{ dialogDish?.price }}</view>
+          <view class="add-cart-btn" @tap="addToCart(dialogDish as DishToCartItem)">加入购物车</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 5. 购物车列表弹窗 (保持逻辑，微调样式) -->
+    <view class="popup-mask cart-mask" v-show="openCartList" @click="openCartList = false">
+      <view class="cart-popup" @click.stop>
+        <view class="cart-header">
+          <text class="tit">购物车</text>
+          <view class="clear-btn" @click="clearCart">
+            <image src="../../static/icon/clear.png" class="icon"></image>
+            <text>清空</text>
+          </view>
+        </view>
+        <scroll-view scroll-y class="cart-scroll">
+          <view class="cart-item" v-for="(obj, index) in cartList" :key="index">
+            <image class="item-img" :src="obj.pic" mode="aspectFill"></image>
+            <view class="item-info">
+              <view class="name">{{ obj.name }}</view>
+              <view class="flavor" v-if="obj.dishFlavor">{{ obj.dishFlavor }}</view>
+              <view class="row-bottom">
+                <view class="price">¥{{ obj.amount }}</view>
+                <view class="stepper">
+                  <image src="../../static/icon/sub.png" class="btn" @click.stop="subDishAction(obj, '购物车')"></image>
+                  <text class="num">{{ obj.number }}</text>
+                  <image src="../../static/icon/add.png" class="btn" @click.stop="addDishAction(obj, '购物车')"></image>
+                </view>
+              </view>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
+
   </view>
 </template>
 
@@ -184,6 +205,8 @@ const chosedflavors = ref<string[]>([])
 
 // ------ method ------
 onLoad(async (options) => {
+  // 初始化时关闭购物车弹窗
+  openCartList.value = false
   await getCartList() // 获取购物车列表(一开始为空)
   await getCategoryData() // 获取分类列表
   if (options && 'dishId' in options) {
@@ -193,6 +216,13 @@ onLoad(async (options) => {
     console.log('setmealId', options?.setmealId)
     init(options?.setmealId, 'setmealId')
   }
+})
+
+// 页面显示时关闭购物车弹窗（防止从其他页面返回时弹窗还开着）
+onShow(() => {
+  openCartList.value = false
+  // 刷新购物车数据
+  getCartList()
 })
 
 const init = async (id: number, type: string) => {
@@ -391,621 +421,278 @@ const submitOrder = () => {
 }
 </script>
 
-<style lang="less" scoped>
-.dialog {
-  position: fixed;
-  width: 100%;
-  height: 100%;
-  z-index: 1000;
-  top: 0;
-  left: 0;
-  background: rgba(0, 0, 0, 0.6);
-}
-
-.flavor_pop {
-  position: relative;
-  top: 50%;
-  left: 50%;
-  transform: translateX(-50%) translateY(-50%);
-  padding: 40rpx;
-  border-radius: 20rpx;
-  width: 60%;
-  height: 40%;
-  background-color: #fff;
-  justify-content: center;
-
-  .title {
-    font-size: 36rpx;
-    font-weight: bold;
-    margin-bottom: 10rpx;
+<style lang="scss" scoped>
+  .container {
+    min-height: 100vh;
+    background-color: #f8f8f8;
+    position: relative;
   }
-
-  .scroll {
-    height: 80%;
-    padding-bottom: 20rpx;
-  }
-
-  .flavor {
-    padding: 10rpx 0;
-  }
-
-  .flavorItem {
-    margin: 10rpx 20rpx 10rpx 0;
-    padding: 10rpx;
-    display: inline-block;
-    border: #00aaff 1rpx solid;
-    border-radius: 20rpx;
-    text-align: center;
-    font-size: 20rpx;
-  }
-  .active {
-    background-color: #00aaff;
-    color: #fff;
-  }
-
-  .addToCart {
-    position: absolute;
-    bottom: 20rpx;
-    right: 30rpx;
-    width: 150rpx;
-    height: 50rpx;
-    background-color: #00aaff;
-    color: #fff;
-    font-size: 20rpx;
-    text-align: center;
-    line-height: 50rpx;
-    border-radius: 30rpx;
-  }
-}
-
-.setmeal_pop {
-  position: relative;
-  top: 50%;
-  left: 50%;
-  padding: 40rpx;
-  transform: translateX(-50%) translateY(-50%);
-  border-radius: 20rpx;
-  width: 100%;
-  height: 100%;
-  background-color: #fff;
-  justify-content: center;
-}
-
-.dish {
-  .image {
+  
+  /* 顶部大图 */
+  .header-banner {
     width: 100%;
-    height: 400rpx;
-  }
-
-  .dishinfo {
-    padding: 20rpx;
-    display: flex;
+    height: 480rpx;
     position: relative;
-    flex-direction: column;
-    justify-content: space-between;
-    flex: 1;
-
-    .ellipsis {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+    
+    .banner-img {
+      width: 100%;
+      height: 100%;
     }
-
-    .name {
-      padding: 5rpx;
-      font-size: 30rpx;
-      color: #222;
-    }
-
-    .detail {
-      padding: 5rpx;
-      font-size: 25rpx;
-      color: #333;
-    }
-
-    .price {
-      padding: 5rpx;
-      font-size: 35rpx;
-      color: #cf4444;
-    }
-
-    .number {
-      font-size: 24rpx;
-      margin-left: 2rpx;
-    }
-
-    .choosenorm {
+    
+    .mask {
       position: absolute;
-      right: 20rpx;
-      bottom: 10rpx;
-      width: 100rpx;
-      height: 40rpx;
-    }
-
-    .sub_add {
-      display: flex;
-      position: absolute;
-      right: 30rpx;
-      bottom: 30rpx;
-
-      .sub {
-        // margin-right: 90rpx;
-        width: 50rpx;
-        height: 50rpx;
-      }
-
-      .add {
-        width: 50rpx;
-        height: 50rpx;
-      }
-
-      .dish_number {
-        padding: 0 10rpx;
-        line-height: 30rpx;
-        font-size: 30rpx;
-        font-family: PingFangSC, PingFangSC-Medium;
-        font-weight: 500;
-      }
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.4));
     }
   }
-
-  image {
-    right: 20rpx;
-    width: 30rpx;
-    height: 30rpx;
-  }
-
-  .choosenorm {
-    right: 20rpx;
-    bottom: 10rpx;
-    width: 100rpx;
-    height: 40rpx;
-  }
-}
-
-.setmeal {
-  margin: 20rpx;
-
-  .setmeal_item {
-    width: 600rpx;
-    margin: 10rpx 30rpx 10rpx 20rpx;
-    background-color: #f6f6f6;
-    display: flex;
-
-    image {
-      width: 150rpx;
-      height: 150rpx;
-    }
-
-    .dishinfo {
-      width: 100rpx;
-      padding: 10rpx;
-      display: flex;
-      position: relative;
-      flex-direction: column;
-      justify-content: space-between;
-      flex: 1;
-
-      .ellipsis {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .name {
-        padding: 5rpx;
-        font-size: 24rpx;
-        color: #222;
-      }
-
-      .detail {
-        padding: 5rpx;
-        font-size: 18rpx;
-        color: #333;
-      }
-    }
-  }
-
-  .setmeal_info {
-    width: 600rpx;
-    height: 100rpx;
-    margin: 50rpx 30rpx 10rpx 20rpx;
-    background-color: #f6f6f6;
-    display: flex;
-    flex-direction: column;
+  
+  /* 内容卡片 (上浮) */
+  .content-card {
     position: relative;
-
-    .ellipsis {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .detail {
-      padding: 5rpx;
-      font-size: 25rpx;
-      color: #333;
-    }
-
-    .price {
-      padding: 5rpx;
-      font-size: 18rpx;
-      color: #cf4444;
-
-      .number {
-        font-size: 24rpx;
-        margin-left: 2rpx;
-      }
-    }
-
-    .sub_add {
-      display: flex;
-      position: absolute;
-      right: 30rpx;
-      bottom: 30rpx;
-
-      .sub {
-        // margin-right: 90rpx;
-        width: 50rpx;
-        height: 50rpx;
-      }
-
-      .add {
-        width: 50rpx;
-        height: 50rpx;
-      }
-
-      .dish_number {
-        padding: 0 10rpx;
-        line-height: 30rpx;
-        font-size: 30rpx;
-        font-family: PingFangSC, PingFangSC-Medium;
-        font-weight: 500;
-      }
-    }
-  }
-}
-
-.footer_order_buttom {
-  position: fixed;
-  display: flex;
-  bottom: 48rpx;
-  width: calc(100% - 60rpx);
-  height: 88rpx;
-  margin: 0 30rpx;
-  background: rgba(0, 0, 0, 0.9);
-  border-radius: 50rpx;
-  box-shadow: 0px 6rpx 10rpx 0px rgba(0, 0, 0, 0.25);
-  z-index: 1000;
-  padding: 0rpx 10rpx;
-  box-sizing: border-box;
-
-  .order_number {
-    position: relative;
-    width: 120rpx;
-
-    .order_number_icon {
-      position: absolute;
-      display: block;
-      width: 120rpx;
-      height: 120rpx;
-      left: 12rpx;
-      bottom: 0px;
-    }
-
-    .order_dish_num {
-      position: absolute;
-      display: inline-block;
-      z-index: 9;
-      // width: 36rpx;
-      min-width: 12rpx;
-      height: 36rpx;
-      line-height: 36rpx;
-      padding: 0 12rpx;
-      left: 92rpx;
-      font-size: 24rpx;
-      top: -8rpx;
-      // text-align: center;
-      border-radius: 20rpx;
-      background-color: #e94e3c;
-      color: #fff;
-      font-weight: 500;
-    }
-  }
-
-  .order_price {
-    flex: 1;
-    text-align: left;
-    color: #fff;
-    line-height: 88rpx;
-    padding-left: 34rpx;
-    box-sizing: border-box;
-    font-size: 36rpx;
-    font-family: DIN, DIN-Medium;
-    font-weight: 500;
-
-    .ico {
-      font-size: 24rpx;
-    }
-  }
-
-  .order_btn {
-    background-color: #d8d8d8;
-    width: 204rpx;
-    height: 72rpx;
-    line-height: 72rpx;
-    border-radius: 72rpx;
-    color: #fff;
-    text-align: center;
-    font-weight: bold;
-    margin-top: 8rpx;
-  }
-
-  .order_btn_active {
-    width: 204rpx;
-    height: 72rpx;
-    line-height: 72rpx;
-    border-radius: 72rpx;
-    color: #fff;
-    text-align: center;
-    font-weight: bold;
-    margin-top: 8rpx;
-    background: #00aaff;
-  }
-}
-
-.pop_mask {
-  position: fixed;
-  width: 100%;
-  height: 100vh;
-  top: 0;
-  left: 0;
-  z-index: 500;
-  background-color: rgba(0, 0, 0, 0.4);
-
-  .pop {
-    width: 60%;
-    position: relative;
-    top: 40%;
-    left: 50%;
-    transform: translateX(-50%) translateY(-50%);
+    margin-top: -60rpx; /* 负边距实现上浮 */
     background: #fff;
-    border-radius: 20rpx;
-
-    .open_table_cont {
-      padding-top: 60rpx;
-
-      .cont_tit {
-        font-size: 36rpx;
-        color: #20232a;
-        text-align: center;
-      }
-
-      .people_num_act {
-        display: flex;
-        width: 60%;
-        margin: 0 auto;
-
-        .red,
-        .add {
-          width: 112rpx;
-          height: 112rpx;
-        }
-
-        .people_num {
-          line-height: 112rpx;
-          flex: 1;
-          text-align: center;
-          font-size: 30rpx;
-          color: #20232a;
-        }
-      }
-    }
-
-    .butList {
-      background: #f7f7f7;
-      display: flex;
-      text-align: center;
-      border-radius: 20rpx;
-
-      .define {
-        flex: 1;
-        font-size: 36rpx;
-        line-height: 100rpx;
-      }
-
-      .cancel {
-        flex: 1;
-        font-size: 36rpx;
-        line-height: 100rpx;
-      }
-    }
+    border-radius: 40rpx 40rpx 0 0;
+    padding: 40rpx 30rpx;
+    min-height: 500rpx;
+    z-index: 10;
   }
-
-  .cart_pop {
-    width: 100%;
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    height: 60vh;
-    background-color: #fff;
-    border-radius: 20rpx 20rpx 0 0;
-    padding: 20rpx 30rpx 30rpx 30rpx;
-    box-sizing: border-box;
-
-    .top_title {
+  
+  /* 基础信息 */
+  .basic-info {
+    .name-row {
+      margin-bottom: 16rpx;
+      .dish-name { font-size: 40rpx; font-weight: bold; color: #333; }
+    }
+    
+    .desc-row {
+      margin-bottom: 30rpx;
+      .dish-desc { font-size: 26rpx; color: #999; line-height: 1.5; }
+    }
+    
+    .price-action-row {
       display: flex;
       justify-content: space-between;
-      border-bottom: solid 1px #ebeef5;
-      padding-bottom: 20rpx;
-
-      .tit {
-        font-size: 40rpx;
-        font-weight: bold;
-        color: #20232a;
+      align-items: center;
+      margin-top: 30rpx;
+      
+      .price-box {
+        color: #ff4d4f;
+        .symbol { font-size: 28rpx; font-weight: bold; }
+        .num { font-size: 48rpx; font-weight: bold; }
       }
-
-      .clear {
-        color: #999999;
-        font-size: 28rpx;
-        font-weight: 400;
-        display: flex;
-        align-items: center;
-        font-family: PingFangSC, PingFangSC-Regular;
-
-        // position: relative;
-        // top: 14rpx;
-        .clear_icon {
-          // position: relative;
-          // top: 0rpx;
-          width: 30rpx;
-          height: 30rpx;
-          margin-right: 8rpx;
-        }
-
-        .clear-des {
-          height: 56rpx;
-          line-height: 56rpx;
-        }
-      }
-    }
-
-    .card_order_list {
-      background-color: #fff;
-      padding-top: 40rpx;
-      box-sizing: border-box;
-      height: calc(100% - 0rpx);
-      flex: 1;
-      position: relative;
-
-      .type_item {
-        display: flex;
-        margin-bottom: 40rpx;
-
-        .dish_img {
-          width: 128rpx;
-          margin-right: 30rpx;
-
-          .dish_img_url {
-            display: block;
-            width: 128rpx;
-            height: 128rpx;
-            border-radius: 8rpx;
-          }
-        }
-
-        .dish_info {
+      
+      .action-box {
+        .spec-btn {
+          background: #00aaff;
+          color: #fff;
+          padding: 12rpx 30rpx;
+          border-radius: 30rpx;
+          font-size: 26rpx;
+          font-weight: bold;
           position: relative;
+          .badge {
+            position: absolute; top: -10rpx; right: -10rpx;
+            background: #ff4d4f; color: #fff;
+            font-size: 20rpx; padding: 2rpx 10rpx;
+            border-radius: 20rpx;
+          }
+        }
+        
+        .stepper {
+          display: flex;
+          align-items: center;
+          .btn {
+            width: 50rpx; height: 50rpx;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 36rpx; font-weight: bold;
+            &.minus { border: 2rpx solid #ddd; color: #666; background: #fff;}
+            &.plus { background: #00aaff; color: #fff; }
+          }
+          .count { margin: 0 20rpx; font-size: 32rpx; font-weight: bold; }
+        }
+      }
+    }
+  }
+  
+  /* 套餐列表 */
+  .setmeal-list {
+    margin-top: 40rpx;
+    .section-title { font-size: 32rpx; font-weight: bold; margin-bottom: 20rpx; }
+    
+    .sub-item {
+      display: flex;
+      margin-bottom: 24rpx;
+      .sub-img {
+        width: 120rpx; height: 120rpx;
+        border-radius: 12rpx;
+        margin-right: 20rpx;
+        background: #f5f5f5;
+      }
+      .sub-info {
+        flex: 1;
+        display: flex; flex-direction: column; justify-content: center;
+        .sub-name { font-size: 28rpx; font-weight: bold; color: #333; }
+        .sub-count { font-size: 24rpx; color: #999; margin: 4rpx 0; }
+        .sub-desc { font-size: 22rpx; color: #ccc; }
+      }
+    }
+  }
+  
+  /* 底部悬浮购物车 */
+  .footer-bar {
+    position: fixed;
+    bottom: 40rpx;
+    left: 30rpx; right: 30rpx;
+    height: 100rpx;
+    z-index: 99;
+    
+    .cart-box {
+      display: flex; align-items: center;
+      background: #333;
+      border-radius: 50rpx;
+      height: 100%;
+      box-shadow: 0 8rpx 20rpx rgba(0,0,0,0.2);
+      position: relative;
+      
+      .icon-wrap {
+        width: 100rpx; height: 100rpx;
+        background: #444;
+        border-radius: 50%;
+        position: absolute; left: 0; bottom: 0;
+        display: flex; align-items: center; justify-content: center;
+        border: 8rpx solid #333; /* 模拟镂空 */
+        
+        .icon { width: 60rpx; height: 60rpx; }
+        .badge {
+          position: absolute; top: 0; right: 0;
+          background: #ff4d4f; color: #fff;
+          font-size: 20rpx; padding: 4rpx 10rpx;
+          border-radius: 20rpx;
+        }
+      }
+      
+      &.active .icon-wrap { background: #00aaff; }
+      
+      /* 空状态 */
+      &.empty {
+        .tips { margin-left: 120rpx; color: #999; font-size: 28rpx; }
+        .btn { margin-left: auto; width: 200rpx; background: #444; color: #999; }
+      }
+      
+      /* 有货状态 */
+      &.active {
+        .price-info {
+          margin-left: 120rpx;
           flex: 1;
-          padding-bottom: 40rpx;
-          border-bottom: solid 1px #ebeef5;
-
-          .dish_name {
-            font-size: 32rpx;
-            color: #333333;
-            font-family: PingFangSC, PingFangSC-Semibold;
-            font-weight: 600;
-          }
-
-          .dish_price {
-            font-size: 36rpx;
-            color: #e94e3c;
-            font-weight: bold;
-
-            .ico {
-              font-size: 24rpx;
-            }
-          }
-
-          .dish_flavor {
-            font-size: 20rpx;
-            color: #666;
-          }
-
-          .dish_active {
-            position: absolute;
-            right: 20rpx;
-            bottom: 20rpx;
-            display: flex;
-
-            .dish_add,
-            .dish_sub {
-              display: block;
-              width: 50rpx;
-              height: 50rpx;
-              margin: 11rpx;
-            }
-
-            .dish_number {
-              padding: 0 10rpx;
-              line-height: 72rpx;
-              font-size: 30rpx;
-              font-family: PingFangSC, PingFangSC-Medium;
-              font-weight: 500;
+          .total { color: #fff; font-size: 28rpx; .big { font-size: 36rpx; font-weight: bold; } }
+          .delivery { color: #999; font-size: 20rpx; }
+        }
+        .btn { margin-left: auto; width: 200rpx; background: #00aaff; color: #fff; }
+      }
+      
+      .btn {
+        height: 100%;
+        border-radius: 0 50rpx 50rpx 0;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: bold; font-size: 30rpx;
+      }
+    }
+  }
+  
+  /* 通用弹窗遮罩 */
+  .popup-mask {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
+    background: rgba(0,0,0,0.5); z-index: 900;
+    display: flex; flex-direction: column; justify-content: flex-end;
+  }
+  
+  /* 规格弹窗 */
+  .popup-content {
+    background: #fff;
+    border-radius: 30rpx 30rpx 0 0;
+    padding: 30rpx;
+    
+    .popup-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 30rpx;
+      .tit { font-size: 32rpx; font-weight: bold; }
+      .close { font-size: 40rpx; color: #999; padding: 10rpx; }
+    }
+    
+    .popup-scroll {
+      max-height: 60vh;
+      .flavor-group {
+        margin-bottom: 30rpx;
+        .flavor-name { font-size: 28rpx; color: #666; margin-bottom: 16rpx; }
+        .flavor-tags {
+          display: flex; flex-wrap: wrap; gap: 20rpx;
+          .tag {
+            padding: 10rpx 30rpx;
+            border: 2rpx solid #ddd;
+            border-radius: 8rpx;
+            font-size: 26rpx;
+            color: #333;
+            &.active {
+              border-color: #00aaff;
+              background: #e6f7ff;
+              color: #00aaff;
+              font-weight: bold;
             }
           }
         }
       }
-
-      &::before {
-        content: '';
-        position: absolute;
-        width: 100vw;
-        height: 120rpx;
-        z-index: 99;
-        background: linear-gradient(0deg, rgba(255, 255, 255, 1) 10%, rgba(255, 255, 255, 0));
-        bottom: 0px;
-        left: 0px;
-      }
-
-      .seize_seat {
-        width: 100%;
-        height: 120rpx;
+    }
+    
+    .popup-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-top: 30rpx; border-top: 1rpx solid #eee;
+      .price { color: #ff4d4f; font-size: 40rpx; font-weight: bold; }
+      .add-cart-btn {
+        background: #00aaff; color: #fff;
+        padding: 16rpx 60rpx; border-radius: 40rpx;
+        font-weight: bold;
       }
     }
   }
-
-  .lodding {
-    position: relative;
-    top: 40%;
-    margin: 0 auto;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    .lodding_ico {
-      width: 160rpx;
-      height: 160rpx;
-      border-radius: 100%;
+  
+  /* 购物车列表弹窗 */
+  .cart-popup {
+    background: #fff;
+    border-radius: 30rpx 30rpx 0 0;
+    padding-bottom: 160rpx; /* 避开底部条 */
+    
+    .cart-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 30rpx; background: #f9f9f9;
+      .tit { font-weight: bold; }
+      .clear-btn {
+        display: flex; align-items: center; color: #999; font-size: 24rpx;
+        .icon { width: 30rpx; height: 30rpx; margin-right: 6rpx; }
+      }
+    }
+    
+    .cart-scroll {
+      max-height: 50vh;
+      padding: 0 30rpx;
+      .cart-item {
+        display: flex; padding: 24rpx 0; border-bottom: 1rpx solid #f5f5f5;
+        .item-img { width: 100rpx; height: 100rpx; border-radius: 10rpx; margin-right: 20rpx; background: #eee;}
+        .item-info {
+          flex: 1;
+          .name { font-weight: bold; font-size: 28rpx; }
+          .flavor { font-size: 22rpx; color: #999; margin: 4rpx 0; }
+          .row-bottom {
+            display: flex; justify-content: space-between; align-items: center; margin-top: 10rpx;
+            .price { color: #ff4d4f; font-weight: bold; }
+            .stepper {
+              display: flex; align-items: center;
+              .btn { width: 40rpx; height: 40rpx; }
+              .num { margin: 0 16rpx; font-size: 28rpx; }
+            }
+          }
+        }
+      }
     }
   }
-
-  .close {
-    position: absolute;
-    bottom: -180rpx;
-    left: 50%;
-    transform: translateX(-50%);
-
-    .close_img {
-      width: 88rpx;
-      height: 88rpx;
-    }
-  }
-}
-</style>
-
-<!-- const addDishToCart = async (dish: DishItem | SetmealItem) => {
-  console.log('addDishToCart', dish)
-  // 有可能是套餐或者菜品，先按categoryList遍历，拿到这个菜品对应的分类，获取其sort来判断
-  const sort = categoryList.value.find((item) => item.id === dish.categoryId)?.sort
-  console.log('category？', sort)
-  if (sort && sort < 20) {
-    const partialCart: Partial<CartDTO> = {dishId: dish.id}
-    await addToCartAPI(partialCart)
-  } else {
-    const partialCart: Partial<CartDTO> = {setmealId: dish.id}
-    await addToCartAPI(partialCart)
-  }
-  // 数据库更新，所以拿到新的购物车列表(cartList)，页面才能跟着刷新
-  await getCartList()
-} -->
+  </style>

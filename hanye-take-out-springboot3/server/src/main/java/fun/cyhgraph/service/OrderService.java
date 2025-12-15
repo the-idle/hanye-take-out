@@ -22,6 +22,9 @@ public interface OrderService {
 
     OrderPaymentVO payment(OrderPaymentDTO orderPaymentDTO);
 
+    // 在 OrderService.java 接口中添加
+    void paySuccess(String orderNumber);
+
     PageResult conditionSearch(OrderPageDTO orderPageDTO);
 
     OrderStatisticsVO statistics();

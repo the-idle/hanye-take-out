@@ -35,19 +35,38 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         });
         return;
       }
-      console.log("支付成功");
+      console.log("开始模拟支付...");
       const payDTO = {
         orderNumber: orderNumber.value,
         payMethod: 1
-        // 本平台默认微信支付
       };
-      await api_order.payOrderAPI(payDTO);
-      if (countdownStore.timer !== void 0) {
-        clearInterval(countdownStore.timer);
-        countdownStore.timer = void 0;
-      }
-      common_vendor.index.redirectTo({
-        url: "/pages/submit/success?orderId=" + orderId.value + "&orderNumber=" + orderNumber.value + "&orderAmount=" + orderAmount.value + "&orderTime=" + orderTime.value
+      common_vendor.index.request({
+        url: "http://localhost:8081/user/order/payment/mock",
+        // 请确保端口号和你后端一致
+        method: "PUT",
+        data: payDTO,
+        header: {
+          authentication: common_vendor.index.getStorageSync("token")
+          // 必须带上Token
+        },
+        success: (res) => {
+          if (res.data.code === 0) {
+            console.log("模拟支付成功");
+            if (countdownStore.timer !== void 0) {
+              clearInterval(countdownStore.timer);
+              countdownStore.timer = void 0;
+            }
+            common_vendor.index.redirectTo({
+              url: "/pages/submit/success?orderId=" + orderId.value + "&orderNumber=" + orderNumber.value + "&orderAmount=" + orderAmount.value + "&orderTime=" + orderTime.value
+            });
+          } else {
+            common_vendor.index.showToast({ title: res.data.msg || "支付失败", icon: "none" });
+          }
+        },
+        fail: (err) => {
+          console.log(err);
+          common_vendor.index.showToast({ title: "网络请求失败", icon: "none" });
+        }
       });
     };
     const timeup = () => {
@@ -57,18 +76,13 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         clearInterval(countdownStore.timer);
       }
       countdownStore.timer = setInterval(() => {
-        console.log("什么timer？", countdownStore.timer);
-        console.log("看看是不是一秒执行一次", orderTime.value);
         let buy_time = new Date(orderTime.value).getTime();
         let time = buy_time + 15 * 60 * 1e3 - (/* @__PURE__ */ new Date()).getTime();
         console.log("time", time);
         if (time > 0 && countdownStore.timer !== void 0) {
           var m = time / 1e3 / 60 % 60;
-          console.log("m", m);
           var s = time / 1e3 % 60;
-          console.log("s", s);
           timeupSecond.value = time / 1e3;
-          console.log("timeupSecond小于0？", timeupSecond.value);
           countdownStore.showM = Math.floor(m);
           countdownStore.showS = Math.floor(s);
         } else {
@@ -103,5 +117,5 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     };
   }
 });
-const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-8a6251df"], ["__file", "D:/MyCode/public_project/hanye-take-out/hanye-take-out-uniapp/src/pages/pay/pay.vue"]]);
+const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-8a6251df"], ["__file", "D:/opgames/waimai/hanye-take-out/hanye-take-out-uniapp/src/pages/pay/pay.vue"]]);
 wx.createPage(MiniProgramPage);

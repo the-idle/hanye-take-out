@@ -21,6 +21,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     const flavors = common_vendor.ref([]);
     const chosedflavors = common_vendor.ref([]);
     common_vendor.onLoad(async (options) => {
+      openCartList.value = false;
       await getCartList();
       await getCategoryData();
       if (options && "dishId" in options) {
@@ -30,6 +31,10 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         console.log("setmealId", options == null ? void 0 : options.setmealId);
         init(options == null ? void 0 : options.setmealId, "setmealId");
       }
+    });
+    common_vendor.onShow(() => {
+      openCartList.value = false;
+      getCartList();
     });
     const init = async (id, type) => {
       let res;
@@ -177,57 +182,67 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       });
     };
     return (_ctx, _cache) => {
-      var _a;
+      var _a, _b, _c, _d;
       return common_vendor.e({
         a: dish.value
-      }, dish.value ? common_vendor.e({
-        b: dish.value.pic,
-        c: common_vendor.t(dish.value.name),
-        d: common_vendor.t(dish.value.detail),
-        e: common_vendor.t(dish.value.price),
-        f: dish.value && "flavors" in dish.value && dish.value.flavors.length > 0
-      }, dish.value && "flavors" in dish.value && dish.value.flavors.length > 0 ? {
-        g: common_vendor.o(($event) => chooseNorm(dish.value))
-      } : common_vendor.e({
-        h: getCopies(dish.value) > 0
-      }, getCopies(dish.value) > 0 ? {
-        i: common_vendor.o(($event) => subDishAction(dish.value, "菜品"))
+      }, dish.value ? {
+        b: dish.value.pic
+      } : setmeal.value ? {
+        d: setmeal.value.pic
       } : {}, {
+        c: setmeal.value,
+        e: dish.value || setmeal.value
+      }, dish.value || setmeal.value ? common_vendor.e({
+        f: common_vendor.t(dish.value ? dish.value.name : (_a = setmeal.value) == null ? void 0 : _a.name),
+        g: common_vendor.t(dish.value ? dish.value.detail : (_b = setmeal.value) == null ? void 0 : _b.detail),
+        h: common_vendor.t(dish.value ? dish.value.price : (_c = setmeal.value) == null ? void 0 : _c.price),
+        i: dish.value && dish.value.flavors && dish.value.flavors.length > 0
+      }, dish.value && dish.value.flavors && dish.value.flavors.length > 0 ? common_vendor.e({
         j: getCopies(dish.value) > 0
       }, getCopies(dish.value) > 0 ? {
         k: common_vendor.t(getCopies(dish.value))
       } : {}, {
-        l: common_vendor.o(($event) => addDishAction(dish.value, "菜品"))
+        l: common_vendor.o(($event) => chooseNorm(dish.value))
+      }) : common_vendor.e({
+        m: getCopies(dish.value || setmeal.value) > 0
+      }, getCopies(dish.value || setmeal.value) > 0 ? {
+        n: common_vendor.o(($event) => subDishAction(dish.value || setmeal.value, dish.value ? "菜品" : "套餐"))
+      } : {}, {
+        o: getCopies(dish.value || setmeal.value) > 0
+      }, getCopies(dish.value || setmeal.value) > 0 ? {
+        p: common_vendor.t(getCopies(dish.value || setmeal.value))
+      } : {}, {
+        q: common_vendor.o(($event) => addDishAction(dish.value || setmeal.value, dish.value ? "菜品" : "套餐"))
       })) : {}, {
-        m: setmeal.value
-      }, setmeal.value ? common_vendor.e({
-        n: common_vendor.f(setmeal.value.setmealDishes, (item, k0, i0) => {
+        r: setmeal.value && setmeal.value.setmealDishes && setmeal.value.setmealDishes.length > 0
+      }, setmeal.value && setmeal.value.setmealDishes && setmeal.value.setmealDishes.length > 0 ? {
+        s: common_vendor.f(setmeal.value.setmealDishes, (item, index, i0) => {
           return {
             a: item.pic,
             b: common_vendor.t(item.name),
-            c: common_vendor.t(item.detail),
-            d: item.name
+            c: common_vendor.t(item.copies),
+            d: common_vendor.t(item.detail || "暂无描述"),
+            e: index
           };
-        }),
-        o: common_vendor.t(setmeal.value.detail),
-        p: common_vendor.t((_a = setmeal.value) == null ? void 0 : _a.price),
-        q: getCopies(setmeal.value) > 0
-      }, getCopies(setmeal.value) > 0 ? {
-        r: common_vendor.o(($event) => subDishAction(setmeal.value, "套餐"))
+        })
       } : {}, {
-        s: getCopies(setmeal.value) > 0
-      }, getCopies(setmeal.value) > 0 ? {
-        t: common_vendor.t(getCopies(setmeal.value))
-      } : {}, {
-        v: common_vendor.o(($event) => addDishAction(setmeal.value, "套餐"))
-      }) : {}, {
-        w: common_vendor.f(flavors.value, (flavor, k0, i0) => {
+        t: cartList.value.length === 0
+      }, cartList.value.length === 0 ? {} : {
+        v: common_vendor.t(CartAllNumber.value),
+        w: common_vendor.t(parseFloat((Math.round(CartAllPrice.value * 100) / 100).toFixed(2))),
+        x: common_vendor.o(submitOrder),
+        y: common_vendor.o(($event) => openCartList.value = !openCartList.value)
+      }, {
+        z: visible.value
+      }, visible.value ? {
+        A: common_vendor.o(($event) => visible.value = false),
+        B: common_vendor.f(flavors.value, (flavor, k0, i0) => {
           return {
             a: common_vendor.t(flavor.name),
             b: common_vendor.f(JSON.parse(flavor.list), (item, index, i1) => {
               return {
                 a: common_vendor.t(item),
-                b: chosedflavors.value.findIndex((it) => item === it) !== -1 ? 1 : "",
+                b: chosedflavors.value.includes(item) ? 1 : "",
                 c: index,
                 d: common_vendor.o(($event) => chooseFlavor(JSON.parse(flavor.list), item), index)
               };
@@ -235,40 +250,35 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             c: flavor.name
           };
         }),
-        x: common_vendor.o(($event) => addToCart(dialogDish.value)),
-        y: visible.value,
-        z: cartList.value.length === 0
-      }, cartList.value.length === 0 ? {} : {
-        A: common_vendor.t(CartAllNumber.value),
-        B: common_vendor.t(parseFloat((Math.round(CartAllPrice.value * 100) / 100).toFixed(2))),
-        C: common_vendor.o(($event) => submitOrder()),
-        D: common_vendor.o(() => openCartList.value = !openCartList.value)
-      }, {
-        E: common_vendor.o(($event) => clearCart()),
-        F: common_vendor.f(cartList.value, (obj, index, i0) => {
+        C: common_vendor.t((_d = dialogDish.value) == null ? void 0 : _d.price),
+        D: common_vendor.o(($event) => addToCart(dialogDish.value)),
+        E: common_vendor.o(() => {
+        }),
+        F: common_vendor.o(($event) => visible.value = false)
+      } : {}, {
+        G: common_vendor.o(clearCart),
+        H: common_vendor.f(cartList.value, (obj, index, i0) => {
           return common_vendor.e({
             a: obj.pic,
             b: common_vendor.t(obj.name),
-            c: common_vendor.t(obj.amount),
-            d: common_vendor.t(obj.dishFlavor),
-            e: obj.number && obj.number > 0
-          }, obj.number && obj.number > 0 ? {
-            f: common_vendor.o(($event) => subDishAction(obj, "购物车"), index)
+            c: obj.dishFlavor
+          }, obj.dishFlavor ? {
+            d: common_vendor.t(obj.dishFlavor)
           } : {}, {
-            g: obj.number && obj.number > 0
-          }, obj.number && obj.number > 0 ? {
-            h: common_vendor.t(obj.number)
-          } : {}, {
-            i: common_vendor.o(($event) => addDishAction(obj, "购物车"), index),
-            j: index
+            e: common_vendor.t(obj.amount),
+            f: common_vendor.o(($event) => subDishAction(obj, "购物车"), index),
+            g: common_vendor.t(obj.number),
+            h: common_vendor.o(($event) => addDishAction(obj, "购物车"), index),
+            i: index
           });
         }),
-        G: common_vendor.o(($event) => openCartList.value = openCartList.value),
-        H: openCartList.value,
-        I: common_vendor.o(($event) => openCartList.value = !openCartList.value)
+        I: common_vendor.o(() => {
+        }),
+        J: openCartList.value,
+        K: common_vendor.o(($event) => openCartList.value = false)
       });
     };
   }
 });
-const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-9cb6f745"], ["__file", "D:/MyCode/public_project/hanye-take-out/hanye-take-out-uniapp/src/pages/detail/detail.vue"]]);
+const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-9cb6f745"], ["__file", "D:/opgames/waimai/hanye-take-out/hanye-take-out-uniapp/src/pages/detail/detail.vue"]]);
 wx.createPage(MiniProgramPage);

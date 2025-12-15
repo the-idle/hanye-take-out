@@ -211,18 +211,19 @@ const toOrderDetail = (id: number) => {
 }
 
 const goAddress = () => {
-  uni.redirectTo({
-    url: '/pages/address/address',
+  // 只是去管理地址，不带参数
+  uni.navigateTo({
+    url: '/pages/address/address'
   })
 }
 const goHistory = () => {
-  uni.redirectTo({
-    url: '/pages/history/history',
+  uni.navigateTo({
+    url: '/pages/history/history'
   })
 }
 const goMyself = () => {
-  uni.redirectTo({
-    url: '/pages/updateMy/updateMy',
+  uni.navigateTo({
+    url: '/pages/updateMy/updateMy'
   })
 }
 </script>

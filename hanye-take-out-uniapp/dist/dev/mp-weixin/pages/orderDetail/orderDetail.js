@@ -77,6 +77,18 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       Object.assign(order, res.data);
       console.log("刷新得到新的order", order);
     };
+    const computedDeliveryFee = common_vendor.computed(() => {
+      if (order.deliveryFee !== void 0 && order.deliveryFee !== null) {
+        return Number(order.deliveryFee);
+      }
+      const totalAmount = order.amount || 0;
+      const packAmount = order.packAmount || 0;
+      const dishTotal = (order.orderDetailList || []).reduce((sum, item) => {
+        return sum + (item.amount || 0) * (item.number || 0);
+      }, 0);
+      const deliveryFee = totalAmount - dishTotal - packAmount;
+      return Math.max(0, deliveryFee);
+    });
     const cancelOrder = async () => {
       console.log("取消订单");
       const res = await api_order.cancelOrderAPI(order.id);
@@ -186,20 +198,21 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
           });
         }),
         n: common_vendor.t(order.packAmount),
-        o: common_vendor.t(order.amount),
-        p: common_vendor.o(connectShop),
-        q: common_vendor.t(order.remark),
-        r: common_vendor.t(order.tablewareNumber == -1 ? "无需餐具" : order.tablewareNumber == 0 ? "商家根据餐量提供" : order.tablewareNumber),
-        s: common_vendor.t(order.number),
-        t: common_vendor.t(order.orderTime),
-        v: common_vendor.t(order.address),
-        w: common_vendor.t(order.packAmount === -1 ? "无需餐具" : order.packAmount === 0 ? "按餐量提供" : order.packAmount),
-        x: common_vendor.sr(childComp, "2d945b00-1", {
+        o: common_vendor.t(computedDeliveryFee.value.toFixed(2)),
+        p: common_vendor.t(order.amount),
+        q: common_vendor.o(connectShop),
+        r: common_vendor.t(order.remark),
+        s: common_vendor.t(order.tablewareNumber == -1 ? "无需餐具" : order.tablewareNumber == 0 ? "商家根据餐量提供" : order.tablewareNumber),
+        t: common_vendor.t(order.number),
+        v: common_vendor.t(order.orderTime),
+        w: common_vendor.t(order.address),
+        x: common_vendor.t(order.packAmount === -1 ? "无需餐具" : order.packAmount === 0 ? "按餐量提供" : order.packAmount),
+        y: common_vendor.sr(childComp, "2d945b00-1", {
           "k": "childComp"
         })
       });
     };
   }
 });
-const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-2d945b00"], ["__file", "D:/MyCode/public_project/hanye-take-out/hanye-take-out-uniapp/src/pages/orderDetail/orderDetail.vue"]]);
+const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-2d945b00"], ["__file", "D:/opgames/waimai/hanye-take-out/hanye-take-out-uniapp/src/pages/orderDetail/orderDetail.vue"]]);
 wx.createPage(MiniProgramPage);
