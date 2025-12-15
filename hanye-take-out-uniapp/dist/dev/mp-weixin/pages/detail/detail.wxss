@@ -363,7 +363,10 @@
 .cart-popup.data-v-9cb6f745 {
   background: #fff;
   border-radius: 30rpx 30rpx 0 0;
-  padding-bottom: 160rpx; /* 避开底部条 */
+  max-height: 70vh; /* 限制最大高度，防止超出视野 */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .cart-popup .cart-header.data-v-9cb6f745 {
   display: flex;
@@ -371,9 +374,16 @@
   align-items: center;
   padding: 30rpx;
   background: #f9f9f9;
+  flex-shrink: 0; /* 防止header被压缩 */
 }
 .cart-popup .cart-header .tit.data-v-9cb6f745 {
   font-weight: bold;
+  font-size: 32rpx;
+}
+.cart-popup .cart-header .header-right.data-v-9cb6f745 {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
 }
 .cart-popup .cart-header .clear-btn.data-v-9cb6f745 {
   display: flex;
@@ -386,8 +396,24 @@
   height: 30rpx;
   margin-right: 6rpx;
 }
+.cart-popup .cart-header .close-btn.data-v-9cb6f745 {
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48rpx;
+  color: #666;
+  border-radius: 50%;
+  background: #f0f0f0;
+}
+.cart-popup .cart-header .close-btn.data-v-9cb6f745:active {
+  background: #e0e0e0;
+}
 .cart-popup .cart-scroll.data-v-9cb6f745 {
-  max-height: 50vh;
+  flex: 1; /* 占据剩余空间 */
+  overflow-y: auto; /* 允许滚动 */
+  max-height: calc(70vh - 120rpx); /* 减去header高度 */
   padding: 0 30rpx;
 }
 .cart-popup .cart-scroll .cart-item.data-v-9cb6f745 {

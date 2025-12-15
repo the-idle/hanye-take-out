@@ -32,23 +32,50 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         init(options == null ? void 0 : options.setmealId, "setmealId");
       }
     });
+    const closeCartPopup = () => {
+      openCartList.value = false;
+    };
     common_vendor.onShow(() => {
       openCartList.value = false;
-      getCartList();
+      setTimeout(() => {
+        getCartList();
+      }, 100);
     });
     const init = async (id, type) => {
-      let res;
-      console.log("init", id, type);
-      if (type === "dishId") {
-        res = await api_dish.getDishByIdAPI(id);
-        dish.value = res.data;
-      } else {
-        res = await api_setmeal.getSetmealAPI(id);
-        setmeal.value = res.data;
+      try {
+        let res;
+        console.log("init", id, type);
+        if (type === "dishId") {
+          res = await api_dish.getDishByIdAPI(id);
+          if (res.code === 0 || res.code === 1) {
+            dish.value = res.data;
+          } else {
+            common_vendor.index.showToast({
+              title: res.msg || "获取菜品详情失败",
+              icon: "none"
+            });
+          }
+        } else {
+          res = await api_setmeal.getSetmealAPI(id);
+          if (res.code === 0 || res.code === 1) {
+            setmeal.value = res.data;
+          } else {
+            common_vendor.index.showToast({
+              title: res.msg || "获取套餐详情失败",
+              icon: "none"
+            });
+          }
+        }
+        console.log(res);
+        console.log(dish.value);
+        console.log(setmeal.value);
+      } catch (e) {
+        console.error("获取详情失败", e);
+        common_vendor.index.showToast({
+          title: "获取详情失败，请重试",
+          icon: "none"
+        });
       }
-      console.log(res);
-      console.log(dish.value);
-      console.log(setmeal.value);
     };
     const getCategoryData = async () => {
       const res = await api_category.getCategoryAPI();
@@ -257,7 +284,8 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         F: common_vendor.o(($event) => visible.value = false)
       } : {}, {
         G: common_vendor.o(clearCart),
-        H: common_vendor.f(cartList.value, (obj, index, i0) => {
+        H: common_vendor.o(closeCartPopup),
+        I: common_vendor.f(cartList.value, (obj, index, i0) => {
           return common_vendor.e({
             a: obj.pic,
             b: common_vendor.t(obj.name),
@@ -272,10 +300,10 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             i: index
           });
         }),
-        I: common_vendor.o(() => {
+        J: common_vendor.o(() => {
         }),
-        J: openCartList.value,
-        K: common_vendor.o(($event) => openCartList.value = false)
+        K: openCartList.value,
+        L: common_vendor.o(closeCartPopup)
       });
     };
   }

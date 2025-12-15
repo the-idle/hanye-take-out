@@ -91,7 +91,7 @@
       </view>
       
       <!-- 有商品 -->
-      <view class="cart-box active" v-else @click="openCartList = !openCartList">
+      <view class="cart-box active" v-else @click.stop="openCartList = !openCartList">
         <view class="icon-wrap">
           <image src="../../static/images/cart_active.png" class="icon"></image>
           <view class="badge">{{ CartAllNumber }}</view>
@@ -137,13 +137,18 @@
     </view>
 
     <!-- 5. 购物车列表弹窗 (保持逻辑，微调样式) -->
-    <view class="popup-mask cart-mask" v-show="openCartList" @click="openCartList = false">
+    <view class="popup-mask cart-mask" v-show="openCartList" @click="closeCartPopup">
       <view class="cart-popup" @click.stop>
         <view class="cart-header">
           <text class="tit">购物车</text>
-          <view class="clear-btn" @click="clearCart">
-            <image src="../../static/icon/clear.png" class="icon"></image>
-            <text>清空</text>
+          <view class="header-right">
+            <view class="clear-btn" @click.stop="clearCart">
+              <image src="../../static/icon/clear.png" class="icon"></image>
+              <text>清空</text>
+            </view>
+            <view class="close-btn" @click.stop="closeCartPopup">
+              <text>×</text>
+            </view>
           </view>
         </view>
         <scroll-view scroll-y class="cart-scroll">
@@ -218,28 +223,57 @@ onLoad(async (options) => {
   }
 })
 
+// 关闭购物车弹窗的方法
+const closeCartPopup = () => {
+  openCartList.value = false
+}
+
 // 页面显示时关闭购物车弹窗（防止从其他页面返回时弹窗还开着）
 onShow(() => {
+  // 先关闭弹窗
   openCartList.value = false
-  // 刷新购物车数据
-  getCartList()
+  // 然后刷新购物车数据（异步执行，避免影响弹窗关闭）
+  setTimeout(() => {
+    getCartList()
+  }, 100)
 })
 
 const init = async (id: number, type: string) => {
-  // dishId.value = id
-  let res
-  console.log('init', id, type)
-  if (type === 'dishId') {
-    res = await getDishByIdAPI(id)
-    dish.value = res.data
-  } else {
-    res = await getSetmealAPI(id)
-    setmeal.value = res.data
+  try {
+    // dishId.value = id
+    let res
+    console.log('init', id, type)
+    if (type === 'dishId') {
+      res = await getDishByIdAPI(id)
+      if (res.code === 0 || res.code === 1) {
+        dish.value = res.data
+      } else {
+        uni.showToast({
+          title: res.msg || '获取菜品详情失败',
+          icon: 'none'
+        })
+      }
+    } else {
+      res = await getSetmealAPI(id)
+      if (res.code === 0 || res.code === 1) {
+        setmeal.value = res.data
+      } else {
+        uni.showToast({
+          title: res.msg || '获取套餐详情失败',
+          icon: 'none'
+        })
+      }
+    }
+    console.log(res)
+    console.log(dish.value)
+    console.log(setmeal.value)
+  } catch (e) {
+    console.error('获取详情失败', e)
+    uni.showToast({
+      title: '获取详情失败，请重试',
+      icon: 'none'
+    })
   }
-  console.log(res)
-  // Object.assign(form, category.data.data)
-  console.log(dish.value)
-  console.log(setmeal.value)
 }
 
 const getCategoryData = async () => {
@@ -660,20 +694,37 @@ const submitOrder = () => {
   .cart-popup {
     background: #fff;
     border-radius: 30rpx 30rpx 0 0;
-    padding-bottom: 160rpx; /* 避开底部条 */
+    max-height: 70vh; /* 限制最大高度，防止超出视野 */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     
     .cart-header {
       display: flex; justify-content: space-between; align-items: center;
       padding: 30rpx; background: #f9f9f9;
-      .tit { font-weight: bold; }
+      flex-shrink: 0; /* 防止header被压缩 */
+      .tit { font-weight: bold; font-size: 32rpx; }
+      .header-right {
+        display: flex; align-items: center; gap: 20rpx;
+      }
       .clear-btn {
         display: flex; align-items: center; color: #999; font-size: 24rpx;
         .icon { width: 30rpx; height: 30rpx; margin-right: 6rpx; }
       }
+      .close-btn {
+        width: 60rpx; height: 60rpx;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 48rpx; color: #666; 
+        border-radius: 50%;
+        background: #f0f0f0;
+        &:active { background: #e0e0e0; }
+      }
     }
     
     .cart-scroll {
-      max-height: 50vh;
+      flex: 1; /* 占据剩余空间 */
+      overflow-y: auto; /* 允许滚动 */
+      max-height: calc(70vh - 120rpx); /* 减去header高度 */
       padding: 0 30rpx;
       .cart-item {
         display: flex; padding: 24rpx 0; border-bottom: 1rpx solid #f5f5f5;
