@@ -35,6 +35,14 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     const closeCartPopup = () => {
       openCartList.value = false;
     };
+    const handleImageError = (e) => {
+      console.error("图片加载失败", e);
+      if (dish.value) {
+        dish.value.pic = "/static/images/logo.png";
+      } else if (setmeal.value) {
+        setmeal.value.pic = "/static/images/logo.png";
+      }
+    };
     common_vendor.onShow(() => {
       openCartList.value = false;
       setTimeout(() => {
@@ -213,37 +221,39 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       return common_vendor.e({
         a: dish.value
       }, dish.value ? {
-        b: dish.value.pic
+        b: dish.value.pic || "/static/images/logo.png",
+        c: common_vendor.o(handleImageError)
       } : setmeal.value ? {
-        d: setmeal.value.pic
+        e: setmeal.value.pic || "/static/images/logo.png",
+        f: common_vendor.o(handleImageError)
       } : {}, {
-        c: setmeal.value,
-        e: dish.value || setmeal.value
+        d: setmeal.value,
+        g: dish.value || setmeal.value
       }, dish.value || setmeal.value ? common_vendor.e({
-        f: common_vendor.t(dish.value ? dish.value.name : (_a = setmeal.value) == null ? void 0 : _a.name),
-        g: common_vendor.t(dish.value ? dish.value.detail : (_b = setmeal.value) == null ? void 0 : _b.detail),
-        h: common_vendor.t(dish.value ? dish.value.price : (_c = setmeal.value) == null ? void 0 : _c.price),
-        i: dish.value && dish.value.flavors && dish.value.flavors.length > 0
+        h: common_vendor.t(dish.value ? dish.value.name : (_a = setmeal.value) == null ? void 0 : _a.name),
+        i: common_vendor.t(dish.value ? dish.value.detail : (_b = setmeal.value) == null ? void 0 : _b.detail),
+        j: common_vendor.t(dish.value ? dish.value.price : (_c = setmeal.value) == null ? void 0 : _c.price),
+        k: dish.value && dish.value.flavors && dish.value.flavors.length > 0
       }, dish.value && dish.value.flavors && dish.value.flavors.length > 0 ? common_vendor.e({
-        j: getCopies(dish.value) > 0
+        l: getCopies(dish.value) > 0
       }, getCopies(dish.value) > 0 ? {
-        k: common_vendor.t(getCopies(dish.value))
+        m: common_vendor.t(getCopies(dish.value))
       } : {}, {
-        l: common_vendor.o(($event) => chooseNorm(dish.value))
+        n: common_vendor.o(($event) => chooseNorm(dish.value))
       }) : common_vendor.e({
-        m: getCopies(dish.value || setmeal.value) > 0
-      }, getCopies(dish.value || setmeal.value) > 0 ? {
-        n: common_vendor.o(($event) => subDishAction(dish.value || setmeal.value, dish.value ? "菜品" : "套餐"))
-      } : {}, {
         o: getCopies(dish.value || setmeal.value) > 0
       }, getCopies(dish.value || setmeal.value) > 0 ? {
-        p: common_vendor.t(getCopies(dish.value || setmeal.value))
+        p: common_vendor.o(($event) => subDishAction(dish.value || setmeal.value, dish.value ? "菜品" : "套餐"))
       } : {}, {
-        q: common_vendor.o(($event) => addDishAction(dish.value || setmeal.value, dish.value ? "菜品" : "套餐"))
+        q: getCopies(dish.value || setmeal.value) > 0
+      }, getCopies(dish.value || setmeal.value) > 0 ? {
+        r: common_vendor.t(getCopies(dish.value || setmeal.value))
+      } : {}, {
+        s: common_vendor.o(($event) => addDishAction(dish.value || setmeal.value, dish.value ? "菜品" : "套餐"))
       })) : {}, {
-        r: setmeal.value && setmeal.value.setmealDishes && setmeal.value.setmealDishes.length > 0
+        t: setmeal.value && setmeal.value.setmealDishes && setmeal.value.setmealDishes.length > 0
       }, setmeal.value && setmeal.value.setmealDishes && setmeal.value.setmealDishes.length > 0 ? {
-        s: common_vendor.f(setmeal.value.setmealDishes, (item, index, i0) => {
+        v: common_vendor.f(setmeal.value.setmealDishes, (item, index, i0) => {
           return {
             a: item.pic,
             b: common_vendor.t(item.name),
@@ -253,17 +263,17 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
           };
         })
       } : {}, {
-        t: cartList.value.length === 0
+        w: cartList.value.length === 0
       }, cartList.value.length === 0 ? {} : {
-        v: common_vendor.t(CartAllNumber.value),
-        w: common_vendor.t(parseFloat((Math.round(CartAllPrice.value * 100) / 100).toFixed(2))),
-        x: common_vendor.o(submitOrder),
-        y: common_vendor.o(($event) => openCartList.value = !openCartList.value)
+        x: common_vendor.t(CartAllNumber.value),
+        y: common_vendor.t(parseFloat((Math.round(CartAllPrice.value * 100) / 100).toFixed(2))),
+        z: common_vendor.o(submitOrder),
+        A: common_vendor.o(($event) => openCartList.value = !openCartList.value)
       }, {
-        z: visible.value
+        B: visible.value
       }, visible.value ? {
-        A: common_vendor.o(($event) => visible.value = false),
-        B: common_vendor.f(flavors.value, (flavor, k0, i0) => {
+        C: common_vendor.o(($event) => visible.value = false),
+        D: common_vendor.f(flavors.value, (flavor, k0, i0) => {
           return {
             a: common_vendor.t(flavor.name),
             b: common_vendor.f(JSON.parse(flavor.list), (item, index, i1) => {
@@ -277,17 +287,17 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             c: flavor.name
           };
         }),
-        C: common_vendor.t((_d = dialogDish.value) == null ? void 0 : _d.price),
-        D: common_vendor.o(($event) => addToCart(dialogDish.value)),
-        E: common_vendor.o(() => {
+        E: common_vendor.t((_d = dialogDish.value) == null ? void 0 : _d.price),
+        F: common_vendor.o(($event) => addToCart(dialogDish.value)),
+        G: common_vendor.o(() => {
         }),
-        F: common_vendor.o(($event) => visible.value = false)
+        H: common_vendor.o(($event) => visible.value = false)
       } : {}, {
-        G: common_vendor.o(clearCart),
-        H: common_vendor.o(closeCartPopup),
-        I: common_vendor.f(cartList.value, (obj, index, i0) => {
+        I: common_vendor.o(clearCart),
+        J: common_vendor.o(closeCartPopup),
+        K: common_vendor.f(cartList.value, (obj, index, i0) => {
           return common_vendor.e({
-            a: obj.pic,
+            a: obj.pic || "/static/images/logo.png",
             b: common_vendor.t(obj.name),
             c: obj.dishFlavor
           }, obj.dishFlavor ? {
@@ -300,10 +310,10 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             i: index
           });
         }),
-        J: common_vendor.o(() => {
+        L: common_vendor.o(() => {
         }),
-        K: openCartList.value,
-        L: common_vendor.o(closeCartPopup)
+        M: openCartList.value,
+        N: common_vendor.o(closeCartPopup)
       });
     };
   }

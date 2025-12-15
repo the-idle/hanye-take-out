@@ -4,8 +4,20 @@
     <!-- 1. 顶部大图背景区域 -->
     <view class="header-banner">
       <!-- 菜品图片 -->
-      <image v-if="dish" class="banner-img" :src="dish.pic" mode="aspectFill" />
-      <image v-else-if="setmeal" class="banner-img" :src="setmeal.pic" mode="aspectFill" />
+      <image 
+        v-if="dish" 
+        class="banner-img" 
+        :src="dish.pic || '/static/images/logo.png'" 
+        mode="aspectFill"
+        @error="handleImageError"
+      />
+      <image 
+        v-else-if="setmeal" 
+        class="banner-img" 
+        :src="setmeal.pic || '/static/images/logo.png'" 
+        mode="aspectFill"
+        @error="handleImageError"
+      />
       <!-- 渐变遮罩，为了字看清楚 -->
       <view class="mask"></view>
     </view>
@@ -153,7 +165,7 @@
         </view>
         <scroll-view scroll-y class="cart-scroll">
           <view class="cart-item" v-for="(obj, index) in cartList" :key="index">
-            <image class="item-img" :src="obj.pic" mode="aspectFill"></image>
+            <image class="item-img" :src="obj.pic || '/static/images/logo.png'" mode="aspectFill"></image>
             <view class="item-info">
               <view class="name">{{ obj.name }}</view>
               <view class="flavor" v-if="obj.dishFlavor">{{ obj.dishFlavor }}</view>
@@ -226,6 +238,17 @@ onLoad(async (options) => {
 // 关闭购物车弹窗的方法
 const closeCartPopup = () => {
   openCartList.value = false
+}
+
+// 图片加载失败处理
+const handleImageError = (e: any) => {
+  console.error('图片加载失败', e)
+  // 可以设置一个默认图片
+  if (dish.value) {
+    dish.value.pic = '/static/images/logo.png'
+  } else if (setmeal.value) {
+    setmeal.value.pic = '/static/images/logo.png'
+  }
 }
 
 // 页面显示时关闭购物车弹窗（防止从其他页面返回时弹窗还开着）
