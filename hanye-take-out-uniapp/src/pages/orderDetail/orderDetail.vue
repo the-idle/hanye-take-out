@@ -93,14 +93,12 @@
       <view class="text_right">{{ order.orderTime }}</view>
     </view>
     <view class="bottom_text">
-      <view class="text_left">地址</view>
-      <view class="text_right">{{ order.address }}</view>
+      <view class="text_left">预计送达</view>
+      <view class="text_right">{{ order.estimatedDeliveryTime }}</view>
     </view>
     <view class="bottom_text">
-      <view class="text_left">餐具数量</view>
-      <view class="text_right">
-        {{ order.packAmount === -1 ? '无需餐具' : order.packAmount === 0 ? '按餐量提供' : order.packAmount }}
-      </view>
+      <view class="text_left">地址</view>
+      <view class="text_right">{{ order.address }}</view>
     </view>
   </view>
 
@@ -164,7 +162,7 @@ const order = reactive<OrderVO>({
 
 onLoad(async (options) => {
   console.log('options', options)
-  order.id = options!.orderId
+  order.id = Number(options!.orderId)
   await getOrderDetail()
 })
 
@@ -182,19 +180,19 @@ const computedDeliveryFee = computed(() => {
   if (order.deliveryFee !== undefined && order.deliveryFee !== null) {
     return Number(order.deliveryFee)
   }
-  
+
   // 否则通过计算得出：总金额 - 菜品金额 - 打包费
   const totalAmount = order.amount || 0 // 订单总金额
   const packAmount = order.packAmount || 0 // 打包费
-  
+
   // 计算菜品总金额
   const dishTotal = (order.orderDetailList || []).reduce((sum, item) => {
-    return sum + ((item.amount || 0) * (item.number || 0))
+    return sum + (item.amount || 0) * (item.number || 0)
   }, 0)
-  
+
   // 配送费 = 总金额 - 菜品金额 - 打包费
   const deliveryFee = totalAmount - dishTotal - packAmount
-  
+
   // 确保配送费不为负数（防止数据异常）
   return Math.max(0, deliveryFee)
 })
@@ -246,7 +244,7 @@ const reOrder = async () => {
   await cleanCartAPI()
   // 再来一单会将当前订单的菜品批量加入购物车，跳转到订单页面后，购物车将高亮显示
   await reOrderAPI(order.id as number)
-  uni.redirectTo({
+  uni.switchTab({
     url: '/pages/order/order',
   })
 }

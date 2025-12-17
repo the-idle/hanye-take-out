@@ -65,7 +65,7 @@
           <view class="history_item_right">
             <view class="history_item_status">{{ statusList[item.status as number].name }}</view>
             <view class="history_item_price">￥{{ item.amount }}</view>
-            <view class="history_item_dish_amount">共{{ item.packAmount }}份</view>
+            <view class="history_item_dish_amount">共{{ getTotalCopies(item) }}份</view>
           </view>
         </view>
         <view class="btn_box">
@@ -93,6 +93,10 @@ import type {OrderPageDTO, OrderVO} from '@/types/order'
 
 const userStore = useUserStore()
 const childComp: any = ref(null)
+
+const getTotalCopies = (order: OrderVO) => {
+  return (order.orderDetailList || []).reduce((sum, it) => sum + (it.number || 0), 0)
+}
 
 const statusList = [
   {
@@ -171,7 +175,7 @@ const reOrder = async (id: number) => {
   // 再来一单会将当前订单的菜品批量加入购物车，跳转到订单页面后，购物车将高亮显示
   await reOrderAPI(id as number)
 
-  uni.redirectTo({
+  uni.switchTab({
     url: '/pages/order/order',
   })
 }
@@ -213,17 +217,17 @@ const toOrderDetail = (id: number) => {
 const goAddress = () => {
   // 只是去管理地址，不带参数
   uni.navigateTo({
-    url: '/pages/address/address'
+    url: '/pages/address/address',
   })
 }
 const goHistory = () => {
   uni.navigateTo({
-    url: '/pages/history/history'
+    url: '/pages/history/history',
   })
 }
 const goMyself = () => {
   uni.navigateTo({
-    url: '/pages/updateMy/updateMy'
+    url: '/pages/updateMy/updateMy',
   })
 }
 </script>

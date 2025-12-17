@@ -67,7 +67,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     });
     common_vendor.onLoad(async (options) => {
       console.log("options", options);
-      order.id = options.orderId;
+      order.id = Number(options.orderId);
       await getOrderDetail();
     });
     const getOrderDetail = async () => {
@@ -124,7 +124,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       console.log("再来一单");
       await api_cart.cleanCartAPI();
       await api_order.reOrderAPI(order.id);
-      common_vendor.index.redirectTo({
+      common_vendor.index.switchTab({
         url: "/pages/order/order"
       });
     };
@@ -205,8 +205,8 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         s: common_vendor.t(order.tablewareNumber == -1 ? "无需餐具" : order.tablewareNumber == 0 ? "商家根据餐量提供" : order.tablewareNumber),
         t: common_vendor.t(order.number),
         v: common_vendor.t(order.orderTime),
-        w: common_vendor.t(order.address),
-        x: common_vendor.t(order.packAmount === -1 ? "无需餐具" : order.packAmount === 0 ? "按餐量提供" : order.packAmount),
+        w: common_vendor.t(order.estimatedDeliveryTime),
+        x: common_vendor.t(order.address),
         y: common_vendor.sr(childComp, "2d945b00-1", {
           "k": "childComp"
         })

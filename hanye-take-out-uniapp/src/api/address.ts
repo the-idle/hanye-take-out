@@ -1,5 +1,5 @@
-import type { Address } from '@/types/address'
-import { http } from '@/utils/http'
+import type {Address} from '@/types/address'
+import {http} from '@/utils/http'
 
 /**
  * 新增地址

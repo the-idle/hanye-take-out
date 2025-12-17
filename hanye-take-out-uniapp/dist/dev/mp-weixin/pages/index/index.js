@@ -4,7 +4,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
   __name: "index",
   setup(__props) {
     const toOrderPage = () => {
-      common_vendor.index.navigateTo({
+      common_vendor.index.switchTab({
         url: "/pages/order/order"
       });
     };

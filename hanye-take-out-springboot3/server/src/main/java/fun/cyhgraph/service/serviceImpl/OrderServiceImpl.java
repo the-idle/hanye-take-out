@@ -139,11 +139,7 @@ public class OrderServiceImpl implements OrderService {
 
         // 【关键】覆盖金额，不信任前端传的 amount
         order.setAmount(finalAmount);
-        // 记录打包费 (假设你的Order表有这个字段存金额，如果没有存的是数量，请根据实际情况改)
-        // 这里假设 packAmount 存的是金额，如果是数量则 order.setPackAmount(totalNum)
-        // 根据你前端 params.packAmount 传的是数量，后端数据库如果 pack_amount 是 int 类型存数量：
-        order.setPackAmount(totalNum);
-        // 或者如果数据库里有 pack_fee 字段存金额，就 setPackFee(packFee)
+        order.setPackAmount(packFee.intValue());
 
         order.setAddressBookId(orderSubmitDTO.getAddressId());
         order.setPhone(addressBook.getPhone());

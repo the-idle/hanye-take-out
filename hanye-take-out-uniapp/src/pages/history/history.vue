@@ -31,7 +31,7 @@
         <view class="history_item_right">
           <view class="history_item_status">{{ statusList[item.status as number].name }}</view>
           <view class="history_item_price">￥{{ item.amount }}</view>
-          <view class="history_item_dish_amount">共{{ item.packAmount }}份</view>
+          <view class="history_item_dish_amount">共{{ getTotalCopies(item) }}份</view>
         </view>
       </view>
       <view class="btn_box">
@@ -122,17 +122,10 @@ onLoad(async () => {
   // 分页获取所有订单信息（刚开始只展示前6条）
   const res = await getOrderPage(0)
 })
-onShow(() => {
-  // 1. 重置分页
-  if (typeof page !== 'undefined') {
-      page.value = 1 
-  }
-  // 2. 清空列表 (防止重复叠加)
-  if (typeof orderList !== 'undefined') {
-      orderList.value = []
-  }
-  // 3. 重新加载
-  getOrderList()
+onShow(async () => {
+  orderDTO.value.page = 1
+  historyOrders.value = []
+  await getOrderPage(activeIndex.value, '更改状态')
 })
 
 // 页面上拉触底事件的处理函数
@@ -178,6 +171,10 @@ const toOrderDetail = (id: number) => {
   })
 }
 
+const getTotalCopies = (order: OrderVO) => {
+  return (order.orderDetailList || []).reduce((sum, it) => sum + (it.number || 0), 0)
+}
+
 // 再来一单
 const reOrder = async (id: number) => {
   console.log('再来一单', id)
@@ -185,7 +182,7 @@ const reOrder = async (id: number) => {
   await cleanCartAPI()
   // 再来一单会将当前订单的菜品批量加入购物车，跳转到订单页面后，购物车将高亮显示
   await reOrderAPI(id as number)
-  uni.redirectTo({
+  uni.switchTab({
     url: '/pages/order/order',
   })
 }
@@ -201,7 +198,7 @@ const pushOrder = (id: number) => {
 }
 
 function getOrderList() {
-	throw new Error('Function not implemented.')
+  throw new Error('Function not implemented.')
 }
 </script>
 

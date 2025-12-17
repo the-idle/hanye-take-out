@@ -1,5 +1,5 @@
-import { http } from '@/utils/http'
-import type { OrderPageDTO, OrderSubmitVO, OrderVO, PageVO, OrderPaymentDTO } from '@/types/order'
+import {http} from '@/utils/http'
+import type {OrderPageDTO, OrderSubmitVO, OrderVO, PageVO, OrderPaymentDTO} from '@/types/order'
 
 // 用户下单
 export const submitOrderAPI = (params: any) => {

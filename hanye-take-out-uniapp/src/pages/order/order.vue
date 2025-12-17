@@ -1,160 +1,163 @@
 <template>
-	<view class="page-container">
-  <Navbar :status="status" :shopConfig="shopConfig" />
-  <view class="viewport">
-    <!-- 分类 -->
-    <view class="categories">
-      <!-- 左侧：分类列表 -->
-      <scroll-view class="primary" scroll-y>
-        <view
-          v-for="(item, index) in categoryList"
-          :key="item.id"
-          class="item"
-          :class="{active: index === activeIndex}"
-          @tap="getDishOrSetmealList(index)"
-        >
-          <text class="name"> {{ item.name }} </text>
-        </view>
-      </scroll-view>
-      <!-- 右侧：菜品/套餐列表 -->
-      <scroll-view class="secondary" scroll-y>
-        <view class="section">
-          <navigator
-            v-for="dish in dishList"
-            :key="dish.id"
-            class="dish"
-            hover-class="none"
-            :url="`/pages/detail/detail?${categoryList[activeIndex].sort < 20 ? 'dishId' : 'setmealId'}=${dish.id}`"
-          >
-            <image class="image" :src="dish.pic"></image>
-            <view class="dishinfo">
-              <view class="name ellipsis">{{ dish.name }}</view>
-              <view class="detail ellipsis">{{ dish.detail }}</view>
-              <view class="price">
-                <text class="symbol">¥</text>
-                <text class="number">{{ dish.price }}</text>
-              </view>
-              <!-- 1、选择规格(口味) -->
-              <image
-                v-if="'flavors' in dish && dish.flavors.length > 0"
-                class="choosenorm"
-                src="../../static/images/选择规格.png"
-                @tap.stop="chooseNorm(dish)"
-                mode="scaleToFill"
-              />
-              <!-- 2、加减菜品 -->
-              <view v-else class="sub_add">
-                <!-- 减菜按钮 -->
-                <image
-                  v-if="getCopies(dish) > 0"
-                  src="../../static/icon/sub.png"
-                  @tap.stop="subDishAction(dish, '普通')"
-                  class="sub"
-                ></image>
-                <!-- 菜品份数 -->
-                <text v-if="getCopies(dish) > 0" class="dish_number">{{ getCopies(dish) }}</text>
-                <!-- 加菜按钮 -->
-                <image src="../../static/icon/add.png" @tap.stop="addDishAction(dish, '普通')" class="add" />
-              </view>
-            </view>
-          </navigator>
-        </view>
-      </scroll-view>
-    </view>
-  </view>
-
-  <!-- 菜品口味选择dialog弹窗 -->
-  <view class="dialog" v-show="visible">
-    <view class="flavor_pop">
-      <view class="title">选择规格</view>
-      <scroll-view class="scroll" scroll-y>
-        <!-- 双层口味数组 -->
-        <view v-for="flavor in flavors" :key="flavor.name" class="flavor">
-          <view>{{ flavor.name }}</view>
+  <view class="page-container">
+    <Navbar :status="status" :shopConfig="shopConfig" />
+    <view class="viewport">
+      <!-- 分类 -->
+      <view class="categories">
+        <!-- 左侧：分类列表 -->
+        <scroll-view class="primary" scroll-y>
           <view
-            :class="{flavorItem: true, active: chosedflavors.findIndex((it) => item === it) !== -1}"
-            v-for="(item, index) in JSON.parse(flavor.list)"
-            :key="index"
-            @tap="chooseFlavor(JSON.parse(flavor.list), item)"
+            v-for="(item, index) in categoryList"
+            :key="item.id"
+            class="item"
+            :class="{active: index === activeIndex}"
+            @tap="getDishOrSetmealList(index)"
           >
-            {{ item }}
+            <text class="name"> {{ item.name }} </text>
           </view>
-        </view>
-      </scroll-view>
-      <view class="addToCart" @tap="addToCart(dialogDish as DishToCartItem)">加入购物车</view>
-    </view>
-    <view class="close_dialog" @click="visible = false">×</view>
-  </view>
-
-  <!-- 灰色空购物车 -->
-  <view class="footer_order_buttom" v-if="cartList.length === 0">
-    <view class="order_number">
-      <image src="../../static/images/cart_empty.png" class="order_number_icon"></image>
-    </view>
-    <view class="order_price"> <text class="ico">￥</text> 0 </view>
-    <view class="order_btn"> ￥{{ shopConfig.minOrderAmount || 0 }}起送 </view>
-  </view>
-<!-- 亮起的购物车 -->
-  <view class="footer_order_buttom" @click="() => (openCartList = !openCartList)" v-else>
-    <view class="order_number">
-      <image src="../../static/images/cart_active.png" class="order_number_icon"></image>
-      <view class="order_dish_num"> {{ CartAllNumber }} </view>
-    </view>
-    <view class="order_price">
-      <text class="ico">￥ </text> {{ parseFloat((Math.round(CartAllPrice * 100) / 100).toFixed(2)) }}
-    </view>
-    
-     <!-- 【核心修改开始】 -->
-     <!-- 动态判断：如果总价 < 起送价，显示还差多少，且变灰；否则显示去结算 -->
-     <view 
-       class="order_btn_active" 
-       :class="{ 'disabled-btn': CartAllPrice < shopConfig.minOrderAmount }"
-       @click.stop="submitOrder()"
-     > 
-       {{ CartAllPrice >= shopConfig.minOrderAmount ? '去结算' : `差￥${(shopConfig.minOrderAmount - CartAllPrice).toFixed(1)}起送` }}
-     </view>
-     <!-- 【核心修改结束】 -->
-    
-  </view>
-
-  <!-- 底部购物车菜品列表 -->
-  <view class="pop_mask" v-show="openCartList" @click="openCartList = !openCartList">
-    <view class="cart_pop" @click.stop="openCartList = openCartList">
-      <view class="top_title">
-        <view class="tit"> 购物车 </view>
-        <view class="clear" @click.stop="clearCart()">
-          <image class="clear_icon" src="../../static/icon/clear.png"></image>
-          <text class="clear-des">清空 </text>
-        </view>
+        </scroll-view>
+        <!-- 右侧：菜品/套餐列表 -->
+        <scroll-view class="secondary" scroll-y>
+          <view class="section">
+            <navigator
+              v-for="dish in dishList"
+              :key="dish.id"
+              class="dish"
+              hover-class="none"
+              :url="`/pages/detail/detail?${categoryList[activeIndex].type === 1 ? 'dishId' : 'setmealId'}=${dish.id}`"
+            >
+              <image class="image" :src="dish.pic"></image>
+              <view class="dishinfo">
+                <view class="name ellipsis">{{ dish.name }}</view>
+                <view class="detail ellipsis">{{ dish.detail }}</view>
+                <view class="price">
+                  <text class="symbol">¥</text>
+                  <text class="number">{{ dish.price }}</text>
+                </view>
+                <!-- 1、选择规格(口味) -->
+                <image
+                  v-if="'flavors' in dish && dish.flavors.length > 0"
+                  class="choosenorm"
+                  src="../../static/images/选择规格.png"
+                  @tap.stop="chooseNorm(dish)"
+                  mode="scaleToFill"
+                />
+                <!-- 2、加减菜品 -->
+                <view v-else class="sub_add">
+                  <!-- 减菜按钮 -->
+                  <image
+                    v-if="getCopies(dish) > 0"
+                    src="../../static/icon/sub.png"
+                    @tap.stop="subDishAction(dish, '普通')"
+                    class="sub"
+                  ></image>
+                  <!-- 菜品份数 -->
+                  <text v-if="getCopies(dish) > 0" class="dish_number">{{ getCopies(dish) }}</text>
+                  <!-- 加菜按钮 -->
+                  <image src="../../static/icon/add.png" @tap.stop="addDishAction(dish, '普通')" class="add" />
+                </view>
+              </view>
+            </navigator>
+          </view>
+        </scroll-view>
       </view>
-      <scroll-view class="card_order_list" scroll-y scroll-top="40rpx">
-        <view class="type_item" v-for="(obj, index) in cartList" :key="index">
-          <view class="dish_img">
-            <image mode="aspectFill" :src="obj.pic" class="dish_img_url"></image>
-          </view>
-          <view class="dish_info">
-            <view class="dish_name"> {{ obj.name }} </view>
-            <view class="dish_price"> <text class="ico">￥</text> {{ obj.amount }} </view>
-            <view class="dish_flavor"> {{ obj.dishFlavor }} </view>
-            <view class="dish_active">
-              <image
-                v-if="obj.number && obj.number > 0"
-                src="../../static/icon/sub.png"
-                @click.stop="subDishAction(obj, '购物车')"
-                class="dish_sub"
-              ></image>
-              <text v-if="obj.number && obj.number > 0" class="dish_number">{{ obj.number }}</text>
-              <image src="../../static/icon/add.png" class="dish_add" @click.stop="addDishAction(obj, '购物车')">
-              </image>
+    </view>
+
+    <!-- 菜品口味选择dialog弹窗 -->
+    <view class="dialog" v-show="visible">
+      <view class="flavor_pop">
+        <view class="title">选择规格</view>
+        <scroll-view class="scroll" scroll-y>
+          <!-- 双层口味数组 -->
+          <view v-for="flavor in flavors" :key="flavor.name" class="flavor">
+            <view>{{ flavor.name }}</view>
+            <view
+              :class="{flavorItem: true, active: chosedflavors.findIndex((it) => item === it) !== -1}"
+              v-for="(item, index) in JSON.parse(flavor.list)"
+              :key="index"
+              @tap="chooseFlavor(JSON.parse(flavor.list), item)"
+            >
+              {{ item }}
             </view>
           </view>
-        </view>
-        <view class="seize_seat"></view>
-      </scroll-view>
+        </scroll-view>
+        <view class="addToCart" @tap="addToCart(dialogDish as DishToCartItem)">加入购物车</view>
+      </view>
+      <view class="close_dialog" @click="visible = false">×</view>
     </view>
-  </view>
 
-<!-- <view v-show="!status" class="closed-mask">
+    <!-- 灰色空购物车 -->
+    <view class="footer_order_buttom" v-if="cartList.length === 0">
+      <view class="order_number">
+        <image src="../../static/images/cart_empty.png" class="order_number_icon"></image>
+      </view>
+      <view class="order_price"> <text class="ico">￥</text> 0 </view>
+      <view class="order_btn"> ￥{{ shopConfig.minOrderAmount || 0 }}起送 </view>
+    </view>
+    <!-- 亮起的购物车 -->
+    <view class="footer_order_buttom" @click="() => (openCartList = !openCartList)" v-else>
+      <view class="order_number">
+        <image src="../../static/images/cart_active.png" class="order_number_icon"></image>
+        <view class="order_dish_num"> {{ CartAllNumber }} </view>
+      </view>
+      <view class="order_price">
+        <text class="ico">￥ </text> {{ parseFloat((Math.round(CartAllPrice * 100) / 100).toFixed(2)) }}
+      </view>
+
+      <!-- 【核心修改开始】 -->
+      <!-- 动态判断：如果总价 < 起送价，显示还差多少，且变灰；否则显示去结算 -->
+      <view
+        class="order_btn_active"
+        :class="{'disabled-btn': CartAllPrice < shopConfig.minOrderAmount}"
+        @click.stop="submitOrder()"
+      >
+        {{
+          CartAllPrice >= shopConfig.minOrderAmount
+            ? '去结算'
+            : `差￥${(shopConfig.minOrderAmount - CartAllPrice).toFixed(1)}起送`
+        }}
+      </view>
+      <!-- 【核心修改结束】 -->
+    </view>
+
+    <!-- 底部购物车菜品列表 -->
+    <view class="pop_mask" v-show="openCartList" @click="openCartList = !openCartList">
+      <view class="cart_pop" @click.stop="openCartList = openCartList">
+        <view class="top_title">
+          <view class="tit"> 购物车 </view>
+          <view class="clear" @click.stop="clearCart()">
+            <image class="clear_icon" src="../../static/icon/clear.png"></image>
+            <text class="clear-des">清空 </text>
+          </view>
+        </view>
+        <scroll-view class="card_order_list" scroll-y scroll-top="40rpx">
+          <view class="type_item" v-for="(obj, index) in cartList" :key="index">
+            <view class="dish_img">
+              <image mode="aspectFill" :src="obj.pic" class="dish_img_url"></image>
+            </view>
+            <view class="dish_info">
+              <view class="dish_name"> {{ obj.name }} </view>
+              <view class="dish_price"> <text class="ico">￥</text> {{ obj.amount }} </view>
+              <view class="dish_flavor"> {{ obj.dishFlavor }} </view>
+              <view class="dish_active">
+                <image
+                  v-if="obj.number && obj.number > 0"
+                  src="../../static/icon/sub.png"
+                  @click.stop="subDishAction(obj, '购物车')"
+                  class="dish_sub"
+                ></image>
+                <text v-if="obj.number && obj.number > 0" class="dish_number">{{ obj.number }}</text>
+                <image src="../../static/icon/add.png" class="dish_add" @click.stop="addDishAction(obj, '购物车')">
+                </image>
+              </view>
+            </view>
+          </view>
+          <view class="seize_seat"></view>
+        </scroll-view>
+      </view>
+    </view>
+
+    <!-- <view v-show="!status" class="closed-mask">
   <view class="tips">本店已打烊</view>
 </view> -->
   </view>
@@ -259,25 +262,25 @@ const getCartList = async () => {
   console.log('初始化购物车列表', res)
   cartList.value = res.data
   CartAllNumber.value = cartList.value.reduce((acc, cur) => acc + cur.number, 0)
-  
+
   // 计算总价格（包含打包费和配送费）
   const goodsPrice = cartList.value.reduce((acc, cur) => acc + cur.amount * cur.number, 0)
-  
+
   // 计算打包费（如果开启）
   let packPrice = 0
   if (shopConfig.value.packStatus === 1) {
     packPrice = CartAllNumber.value * Number(shopConfig.value.packFee)
   }
-  
+
   // 计算配送费（如果开启）
   let deliveryPrice = 0
   if (shopConfig.value.deliveryStatus === 1) {
     deliveryPrice = Number(shopConfig.value.deliveryFee)
   }
-  
+
   // 总价 = 菜品 + 打包 + 配送
   CartAllPrice.value = goodsPrice + packPrice + deliveryPrice
-  
+
   console.log('CartAllNumber', CartAllNumber.value)
   console.log('CartAllPrice', CartAllPrice.value)
   // 如果减少菜品导致购物车为空，关闭购物车列表
@@ -349,7 +352,7 @@ const chooseFlavor = (obj: string[], flavor: string) => {
 const getCopies = (dish: DishItem | SetmealItem) => {
   console.log('getCopies', dish)
   // 有可能是菜品/套餐，所以要判断
-  if (categoryList.value[activeIndex.value].sort < 20) {
+  if (categoryList.value[activeIndex.value].type === 1) {
     return cartList.value.find((item) => item.dishId === dish.id)?.number || 0
   } else {
     return cartList.value.find((item) => item.setmealId === dish.id)?.number || 0
@@ -380,7 +383,7 @@ const addToCart = async (dish: DishToCartItem) => {
 // "+"按钮，form: 购物车/普通视图中的按钮
 const addDishAction = async (item: any, form: string) => {
   console.log('点击了dialog的 “+” 添加菜品数量按钮', item, form)
-  console.log(categoryList.value[activeIndex.value].sort < 20)
+  console.log(categoryList.value[activeIndex.value].type === 1)
   if (form == '购物车') {
     // 1、直接数量-1，传的参数是cartItem类型，dishId、setmealId必是一个null 一个不null，所以直接全传
     console.log('addCart', item)
@@ -393,7 +396,7 @@ const addDishAction = async (item: any, form: string) => {
   } else {
     // 2、dishItem无dishId、setmealId两个属性，因此得判断
     console.log('普通页面下的dish，点击能直接添加(而不弹出dialog)的菜品说明无口味', item)
-    if (categoryList.value[activeIndex.value].sort < 20) {
+    if (categoryList.value[activeIndex.value].type === 1) {
       const partialCart: Partial<CartDTO> = {dishId: item.id}
       await addToCartAPI(partialCart)
     } else {
@@ -420,7 +423,7 @@ const subDishAction = async (item: any, form: string) => {
   } else {
     // 2、dishItem无dishId、setmealId两个属性，因此得判断
     console.log('普通页面下的dish，不是dialog中的菜品说明无口味', item)
-    if (categoryList.value[activeIndex.value].sort < 20) {
+    if (categoryList.value[activeIndex.value].type === 1) {
       const partialCart: Partial<CartDTO> = {dishId: item.id}
       await subCartAPI(partialCart)
     } else {
@@ -442,16 +445,16 @@ const clearCart = async () => {
 // 提交订单
 const submitOrder = () => {
   if (!status.value) {
-	uni.showToast({
-	  title: '店铺已打烊，无法下单',
-	  icon: 'none'
-	})
-	return
+    uni.showToast({
+      title: '店铺已打烊，无法下单',
+      icon: 'none',
+    })
+    return
   }
-	// 1. 校验起送金额
-	if (CartAllPrice.value < shopConfig.value.minOrderAmount) {
-	  return // 金额不够，不执行跳转
-	}
+  // 1. 校验起送金额
+  if (CartAllPrice.value < shopConfig.value.minOrderAmount) {
+    return // 金额不够，不执行跳转
+  }
   console.log('submitOrder')
   // 跳转到订单确认页面
   uni.navigateTo({
@@ -459,22 +462,20 @@ const submitOrder = () => {
   })
 }
 
-
-
 // 页面加载
 onLoad(async () => {
-	try {
-  const res = await getStatusAPI()
-  console.log('店铺状态---------', res)
+  try {
+    const res = await getStatusAPI()
+    console.log('店铺状态---------', res)
     if (res.data && res.data === 1) {
-        status.value = true
+      status.value = true
     } else {
-        status.value = false
+      status.value = false
     }
-} catch (e) {
+  } catch (e) {
     // 接口报错时，为了不影响演示，可以默认设为 true，或者 false
     console.error(e)
-    status.value = true 
+    status.value = true
   }
   // 获取店铺配置（必须在获取购物车之前）
   await getShopData()
@@ -490,8 +491,8 @@ onShow(async () => {
 
 <style lang="less" scoped>
 :global(page) {
-height: 100%;
-overflow: hidden;
+  height: 100%;
+  overflow: hidden;
 }
 .page-container {
   display: flex;
@@ -499,7 +500,7 @@ overflow: hidden;
   height: 100vh;
   overflow: hidden; /* 防止页面整体滚动 */
   background-color: #fff;
-}	
+}
 
 .dialog {
   position: fixed;
@@ -595,8 +596,8 @@ overflow: hidden;
 }
 
 .viewport {
-  flex: 1;            /* 自动占据剩余高度 */
-  height: 0;          /* 必须设置，触发 scroll-view 内部滚动 */
+  flex: 1; /* 自动占据剩余高度 */
+  height: 0; /* 必须设置，触发 scroll-view 内部滚动 */
   /* padding-top: 130px;  <-- 【重要】一定要删除或注释掉这一行！ */
   display: flex;
   flex-direction: column;
@@ -1388,7 +1389,7 @@ overflow: hidden;
   display: flex;
   align-items: center;
   z-index: 999;
-  box-shadow: 0 6rpx 20rpx rgba(0,0,0,0.3);
+  box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.3);
 
   &.empty {
     opacity: 0.95;
@@ -1450,12 +1451,12 @@ overflow: hidden;
   position: absolute;
   inset: 0;
   z-index: 998; /* 调整到 cart-bar  下面，这样就没问题了 */
-  background: rgba(255,255,255,0.7);
+  background: rgba(255, 255, 255, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
   .tips {
-    background: rgba(0,0,0,0.7);
+    background: rgba(0, 0, 0, 0.7);
     color: #fff;
     padding: 20rpx 40rpx;
     border-radius: 10rpx;
@@ -1470,14 +1471,14 @@ overflow: hidden;
     margin: 20rpx 30rpx 0 30rpx;
     padding: 24rpx;
     border-radius: 16rpx;
-    box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+    box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
     display: flex;
     justify-content: space-between;
     align-items: center;
   }
-    background-color: #22bbff;
-    padding-bottom: 100rpx;  //  增加底部高度，让卡片能盖在上面
-    z-index: 10;
+  background-color: #22bbff;
+  padding-bottom: 100rpx; //  增加底部高度，让卡片能盖在上面
+  z-index: 10;
 }
 .disabled-btn {
   background-color: #555 !important; /* 灰色背景 */

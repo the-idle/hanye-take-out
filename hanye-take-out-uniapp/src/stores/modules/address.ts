@@ -1,5 +1,5 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import {defineStore} from 'pinia'
+import {ref} from 'vue'
 
 export const useAddressStore = defineStore('address', () => {
   // 记录点击地址后要返回的页面url

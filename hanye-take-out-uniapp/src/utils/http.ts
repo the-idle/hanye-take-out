@@ -1,4 +1,4 @@
-import { useUserStore } from '@/stores/modules/user'
+import {useUserStore} from '@/stores/modules/user'
 
 // 请求基地址
 const baseURL = 'http://localhost:8081'
@@ -58,7 +58,7 @@ export const http = <T>(options: UniApp.RequestOptions) => {
           const userStore = useUserStore()
           userStore.clearProfile()
           // 跳转到登录页
-          uni.navigateTo({ url: '/pages/login/login' })
+          uni.navigateTo({url: '/pages/login/login'})
           reject(res)
         } else {
           // 通用错误, 调用reject, 轻量提示框

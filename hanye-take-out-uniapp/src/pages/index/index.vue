@@ -25,7 +25,7 @@
 
 <script setup lang="ts">
 const toOrderPage = () => {
-  uni.navigateTo({
+  uni.switchTab({
     url: '/pages/order/order',
   })
 }

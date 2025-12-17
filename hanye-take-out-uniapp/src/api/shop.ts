@@ -1,5 +1,5 @@
-import { http } from '@/utils/http'
-import type { ShopConfig } from '@/types/shop'
+import {http} from '@/utils/http'
+import type {ShopConfig} from '@/types/shop'
 
 /**
  * 查询店铺状态

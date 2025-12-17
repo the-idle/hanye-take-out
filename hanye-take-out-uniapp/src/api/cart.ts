@@ -1,5 +1,5 @@
-import type { CartDTO, CartItem } from '@/types/cart'
-import { http } from '@/utils/http'
+import type {CartDTO, CartItem} from '@/types/cart'
+import {http} from '@/utils/http'
 
 /**
  * 添加购物车

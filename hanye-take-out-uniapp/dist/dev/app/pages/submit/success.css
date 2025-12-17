@@ -1,0 +1,65 @@
+.container[data-v-03f045ab] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+uni-image[data-v-03f045ab] {
+  width: 9.375rem;
+  height: 9.375rem;
+}
+.pay[data-v-03f045ab] {
+  font-size: 1rem;
+  color: #333;
+  text-align: center;
+  margin-top: 3.125rem;
+}
+.time[data-v-03f045ab] {
+  font-size: 0.875rem;
+  color: #0af;
+  text-align: center;
+  margin-top: 0.625rem;
+}
+.success_desc[data-v-03f045ab] {
+  font-size: 0.875rem;
+  color: #666;
+  text-align: center;
+  margin-top: 1.5625rem;
+}
+.btn_box[data-v-03f045ab] {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 3.125rem;
+}
+.btn_box .return_btn[data-v-03f045ab] {
+  margin: 10px;
+  width: 7.8125rem;
+  height: 2.4375rem;
+  line-height: 2.4375rem;
+  border: #00aaff solid 0.03125rem;
+  border-radius: 1.25rem;
+  color: #00aaff;
+  font-size: 0.9375rem;
+  text-align: center;
+}
+.btn_box .detail_btn[data-v-03f045ab] {
+  margin: 10px;
+  width: 7.8125rem;
+  height: 2.5rem;
+  line-height: 2.5rem;
+  border-radius: 1.25rem;
+  background: #00aaff;
+  border: none;
+  color: #fff;
+  font-size: 0.9375rem;
+  text-align: center;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}

@@ -60,11 +60,11 @@ const toSuccess = async () => {
   }
 
   console.log('开始模拟支付...')
-  
+
   // 1. 构造参数
   const payDTO = {
     orderNumber: orderNumber.value,
-    payMethod: 1, 
+    payMethod: 1,
   }
 
   // 2. 直接调用后端写好的 /mock 接口 (这里直接用uni.request最稳妥，不用去改api文件了)
@@ -75,12 +75,12 @@ const toSuccess = async () => {
     method: 'PUT',
     data: payDTO,
     header: {
-      authentication: uni.getStorageSync('token') // 必须带上Token
+      authentication: uni.getStorageSync('token'), // 必须带上Token
     },
     success: (res: any) => {
       if (res.data.code === 0) {
         console.log('模拟支付成功')
-        
+
         // 关闭定时器
         if (countdownStore.timer !== undefined) {
           clearInterval(countdownStore.timer)
@@ -100,13 +100,13 @@ const toSuccess = async () => {
             orderTime.value,
         })
       } else {
-        uni.showToast({ title: res.data.msg || '支付失败', icon: 'none' })
+        uni.showToast({title: res.data.msg || '支付失败', icon: 'none'})
       }
     },
     fail: (err) => {
       console.log(err)
-      uni.showToast({ title: '网络请求失败', icon: 'none' })
-    }
+      uni.showToast({title: '网络请求失败', icon: 'none'})
+    },
   })
 }
 

@@ -1,5 +1,5 @@
-import type { SetmealItem, SetmealVOItem } from '@/types/setmeal'
-import { http } from '@/utils/http'
+import type {SetmealItem, SetmealVOItem} from '@/types/setmeal'
+import {http} from '@/utils/http'
 
 /**
  * 根据套餐分类id获取套餐列表

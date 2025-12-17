@@ -54,9 +54,10 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       return form.latitude && form.longitude && address.value;
     });
     common_vendor.onLoad(async (opt) => {
-      if (opt.id) {
+      const id = (opt == null ? void 0 : opt.id) !== void 0 ? Number(opt.id) : void 0;
+      if (id !== void 0 && !Number.isNaN(id)) {
         common_vendor.index.setNavigationBarTitle({ title: "修改收货地址" });
-        const res = await api_address.getAddressByIdAPI(opt.id);
+        const res = await api_address.getAddressByIdAPI(id);
         if (res.code === 1 || res.code === 0) {
           Object.assign(form, res.data);
           if (!form.districtName)

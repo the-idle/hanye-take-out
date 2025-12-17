@@ -135,7 +135,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     const getCopies = (dish) => {
       var _a, _b;
       console.log("getCopies", dish);
-      if (categoryList.value[activeIndex.value].sort < 20) {
+      if (categoryList.value[activeIndex.value].type === 1) {
         return ((_a = cartList.value.find((item) => item.dishId === dish.id)) == null ? void 0 : _a.number) || 0;
       } else {
         return ((_b = cartList.value.find((item) => item.setmealId === dish.id)) == null ? void 0 : _b.number) || 0;
@@ -158,7 +158,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     };
     const addDishAction = async (item, form) => {
       console.log("点击了dialog的 “+” 添加菜品数量按钮", item, form);
-      console.log(categoryList.value[activeIndex.value].sort < 20);
+      console.log(categoryList.value[activeIndex.value].type === 1);
       if (form == "购物车") {
         console.log("addCart", item);
         const partialCart = {
@@ -169,7 +169,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         await api_cart.addToCartAPI(partialCart);
       } else {
         console.log("普通页面下的dish，点击能直接添加(而不弹出dialog)的菜品说明无口味", item);
-        if (categoryList.value[activeIndex.value].sort < 20) {
+        if (categoryList.value[activeIndex.value].type === 1) {
           const partialCart = { dishId: item.id };
           await api_cart.addToCartAPI(partialCart);
         } else {
@@ -191,7 +191,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         await api_cart.subCartAPI(partialCart);
       } else {
         console.log("普通页面下的dish，不是dialog中的菜品说明无口味", item);
-        if (categoryList.value[activeIndex.value].sort < 20) {
+        if (categoryList.value[activeIndex.value].type === 1) {
           const partialCart = { dishId: item.id };
           await api_cart.subCartAPI(partialCart);
         } else {
@@ -279,7 +279,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             k: common_vendor.o(($event) => addDishAction(dish, "普通"), dish.id)
           }), {
             l: dish.id,
-            m: `/pages/detail/detail?${categoryList.value[activeIndex.value].sort < 20 ? "dishId" : "setmealId"}=${dish.id}`
+            m: `/pages/detail/detail?${categoryList.value[activeIndex.value].type === 1 ? "dishId" : "setmealId"}=${dish.id}`
           });
         }),
         d: common_vendor.f(flavors.value, (flavor, k0, i0) => {

@@ -1,6 +1,6 @@
-import type { LoginResult } from '@/types/user'
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import type {LoginResult} from '@/types/user'
+import {defineStore} from 'pinia'
+import {ref} from 'vue'
 
 // 定义 Store
 export const useUserStore = defineStore(

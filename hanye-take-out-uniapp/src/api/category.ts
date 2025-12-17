@@ -1,5 +1,5 @@
-import type { CategoryItem } from '@/types/category'
-import { http } from '@/utils/http'
+import type {CategoryItem} from '@/types/category'
+import {http} from '@/utils/http'
 
 /**
  * 分类列表-小程序

@@ -1,5 +1,5 @@
-import type { DishItem } from '@/types/dish'
-import { http } from '@/utils/http'
+import type {DishItem} from '@/types/dish'
+import {http} from '@/utils/http'
 
 /**
  * 根据菜品分类id获取菜品列表

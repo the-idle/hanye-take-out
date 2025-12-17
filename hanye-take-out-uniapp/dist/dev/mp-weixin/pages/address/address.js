@@ -19,7 +19,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       getAddressList();
     });
     common_vendor.onLoad((options) => {
-      if (options.from === "order") {
+      if ((options == null ? void 0 : options.from) === "order") {
         isFromOrder.value = true;
       }
     });

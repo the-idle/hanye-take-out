@@ -1,5 +1,5 @@
-import { http } from '@/utils/http'
-import type { ProfileDetail } from '@/types/user'
+import {http} from '@/utils/http'
+import type {ProfileDetail} from '@/types/user'
 
 // 根据id查询用户信息
 export const getUserInfoAPI = (id: number) => {

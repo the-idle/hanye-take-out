@@ -16,7 +16,7 @@
 
 <script lang="ts" setup>
 import {ref} from 'vue'
-import { onLoad, onShow } from '@dcloudio/uni-app' // 【确保引入 onLoad】
+import {onLoad, onShow} from '@dcloudio/uni-app' // 【确保引入 onLoad】
 
 const remark = ref('')
 
@@ -27,23 +27,23 @@ onLoad((options) => {
   }
 })
 onShow(async () => {
-    // ...
-    const cacheRemark = uni.getStorageSync('order_remark') // Key 必须也是 'order_remark'
-    if (cacheRemark) {
-        remark.value = cacheRemark // 赋值给 submit.vue 里的 remark 变量
-        uni.removeStorageSync('order_remark') // 读完就删
-    }
+  // ...
+  const cacheRemark = uni.getStorageSync('order_remark') // Key 必须也是 'order_remark'
+  if (cacheRemark) {
+    remark.value = cacheRemark // 赋值给 submit.vue 里的 remark 变量
+    uni.removeStorageSync('order_remark') // 读完就删
+  }
 })
 // 返回提交页面，把备注信息传递给store
 const returnToSubmit = () => {
   console.log('remark', remark.value)
-    // 1. 存入缓存，供订单页读取
-    uni.setStorageSync('order_remark', remark.value)
-    
-    // 2. 返回上一级 (订单页)
-    uni.navigateBack({
-        delta: 1
-    })
+  // 1. 存入缓存，供订单页读取
+  uni.setStorageSync('order_remark', remark.value)
+
+  // 2. 返回上一级 (订单页)
+  uni.navigateBack({
+    delta: 1,
+  })
 }
 </script>
 

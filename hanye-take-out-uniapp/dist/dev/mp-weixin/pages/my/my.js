@@ -14,6 +14,9 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
   setup(__props) {
     const userStore = stores_modules_user.useUserStore();
     const childComp = common_vendor.ref(null);
+    const getTotalCopies = (order) => {
+      return (order.orderDetailList || []).reduce((sum, it) => sum + (it.number || 0), 0);
+    };
     const statusList = [
       {
         status: 0,
@@ -81,7 +84,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       console.log("再来一单", id);
       await api_cart.cleanCartAPI();
       await api_order.reOrderAPI(id);
-      common_vendor.index.redirectTo({
+      common_vendor.index.switchTab({
         url: "/pages/order/order"
       });
     };
@@ -146,7 +149,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             c: common_vendor.t(item.orderTime),
             d: common_vendor.t(statusList[item.status].name),
             e: common_vendor.t(item.amount),
-            f: common_vendor.t(item.packAmount),
+            f: common_vendor.t(getTotalCopies(item)),
             g: common_vendor.o(($event) => reOrder(item.id), index),
             h: item.status === 2
           }, item.status === 2 ? {

@@ -19,4 +19,3 @@ export type ShopConfig = {
   autoAccept: number
   updateTime?: string
 }
-
