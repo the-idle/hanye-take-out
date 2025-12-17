@@ -1,7 +1,12 @@
 import {useUserStore} from '@/stores/modules/user'
 
-// 请求基地址
-const baseURL = 'http://localhost:8081'
+let isNavigatingToLogin = false
+
+const getBaseURL = () => {
+  const raw = (uni.getStorageSync('API_BASE_URL') as string) || ''
+  const normalized = typeof raw === 'string' ? raw.replace(/\/+$/, '') : ''
+  return normalized || 'http://localhost:8081'
+}
 
 // 拦截器配置
 const httpInterceptor = {
@@ -9,7 +14,7 @@ const httpInterceptor = {
   invoke(options: UniApp.RequestOptions) {
     // 1. 非 http 开头需拼接地址
     if (!options.url.startsWith('http')) {
-      options.url = baseURL + options.url
+      options.url = getBaseURL() + options.url
     }
     // 2. 请求超时
     options.timeout = 10000
@@ -21,7 +26,10 @@ const httpInterceptor = {
     // 4. 添加 token 请求头标识
     const userStore = useUserStore()
     const token = userStore.profile?.token
-    console.log('token', token)
+    // 生产环境移除console.log
+    if (process.env.NODE_ENV === 'development') {
+      console.log('token', token)
+    }
     if (token) {
       options.header.Authorization = token
     }
@@ -47,7 +55,10 @@ export const http = <T>(options: UniApp.RequestOptions) => {
       ...options,
       // 响应成功
       success(res) {
-        console.log('响应  ', res)
+        // 生产环境移除console.log
+        if (process.env.NODE_ENV === 'development') {
+          console.log('响应  ', res)
+        }
         if (res.statusCode >= 200 && res.statusCode < 300) {
           // 获取数据成功, 调用resolve，返回的是res.data而不是res，能省掉一层嵌套
           // console.log('请求成功', res)
@@ -57,8 +68,35 @@ export const http = <T>(options: UniApp.RequestOptions) => {
           // 清理用户信息
           const userStore = useUserStore()
           userStore.clearProfile()
-          // 跳转到登录页
-          uni.navigateTo({url: '/pages/login/login'})
+          if (!isNavigatingToLogin) {
+            isNavigatingToLogin = true
+            try {
+              const pages = getCurrentPages()
+              const currentPage = pages[pages.length - 1]
+              const currentRoute = currentPage?.route || ''
+              if (currentRoute !== 'pages/login/login') {
+                uni.reLaunch({
+                  url: '/pages/login/login',
+                  complete: () => {
+                    setTimeout(() => {
+                      isNavigatingToLogin = false
+                    }, 1500)
+                  },
+                })
+              } else {
+                isNavigatingToLogin = false
+              }
+            } catch {
+              uni.reLaunch({
+                url: '/pages/login/login',
+                complete: () => {
+                  setTimeout(() => {
+                    isNavigatingToLogin = false
+                  }, 1500)
+                },
+              })
+            }
+          }
           reject(res)
         } else {
           // 通用错误, 调用reject, 轻量提示框

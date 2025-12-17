@@ -61,32 +61,60 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     });
     const total = common_vendor.ref(0);
     common_vendor.onLoad(async (options) => {
-      console.log("options", options);
-      console.log("userStore", userStore.profile);
-      await getUserInfo(user.id);
-      await getOrderPage();
+      {
+        console.log("个人页加载", options);
+      }
+      await refreshData();
     });
+    common_vendor.onShow(async () => {
+      await refreshData();
+    });
+    const refreshData = async () => {
+      orderDTO.value.page = 1;
+      historyOrders.value = [];
+      await Promise.all([
+        getUserInfo(user.id),
+        getOrderPage()
+      ]);
+    };
     const getUserInfo = async (id) => {
-      const res = await api_user.getUserInfoAPI(id);
-      console.log("用户信息", res);
-      user.name = res.data.name;
-      user.gender = res.data.gender ?? 1;
-      user.phone = res.data.phone;
-      user.pic = res.data.pic;
+      try {
+        const res = await api_user.getUserInfoAPI(id);
+        user.name = res.data.name;
+        user.gender = res.data.gender ?? 1;
+        user.phone = res.data.phone;
+        user.pic = res.data.pic;
+      } catch (e) {
+        console.error("获取用户信息失败", e);
+      }
     };
     const getOrderPage = async () => {
-      console.log("orderDTO", orderDTO.value);
-      const res = await api_order.getOrderPageAPI(orderDTO.value);
-      historyOrders.value = historyOrders.value.concat(res.data.records);
-      total.value = res.data.total;
+      try {
+        const res = await api_order.getOrderPageAPI(orderDTO.value);
+        if (orderDTO.value.page === 1) {
+          historyOrders.value = res.data.records;
+        } else {
+          historyOrders.value = historyOrders.value.concat(res.data.records);
+        }
+        total.value = res.data.total;
+      } catch (e) {
+        console.error("获取订单列表失败", e);
+      }
     };
     const reOrder = async (id) => {
-      console.log("再来一单", id);
-      await api_cart.cleanCartAPI();
-      await api_order.reOrderAPI(id);
-      common_vendor.index.switchTab({
-        url: "/pages/order/order"
-      });
+      try {
+        common_vendor.index.showLoading({ title: "加载中..." });
+        await api_cart.cleanCartAPI();
+        await api_order.reOrderAPI(id);
+        common_vendor.index.hideLoading();
+        common_vendor.index.switchTab({
+          url: "/pages/order/order"
+        });
+      } catch (e) {
+        common_vendor.index.hideLoading();
+        console.error("再来一单失败", e);
+        common_vendor.index.showToast({ title: "操作失败", icon: "none" });
+      }
     };
     const pushOrder = async (id) => {
       console.log("催单", id);
@@ -94,10 +122,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       childComp.value.openPopup();
     };
     common_vendor.onReachBottom(() => {
-      console.log("Page:", orderDTO.value.page);
-      console.log("Page Size:", orderDTO.value.pageSize);
       if (orderDTO.value.page * orderDTO.value.pageSize >= Math.min(total.value, 12)) {
-        console.log("end!");
         common_vendor.index.showToast({
           title: "更多订单信息请到历史订单查看！",
           icon: "none"

@@ -71,12 +71,58 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       await getOrderDetail();
     });
     const getOrderDetail = async () => {
-      console.log("获取订单详情");
-      const res = await api_order.getOrderAPI(order.id);
-      console.log("res", res);
-      Object.assign(order, res.data);
-      console.log("刷新得到新的order", order);
+      try {
+        const res = await api_order.getOrderAPI(order.id);
+        Object.assign(order, res.data);
+        if (order.status === 1 && order.orderTime) {
+          initCountdown();
+        } else {
+          clearCountdown();
+        }
+      } catch (e) {
+        console.error("获取订单详情失败", e);
+      }
     };
+    const clearCountdown = () => {
+      if (countdownStore.timer !== void 0) {
+        clearInterval(countdownStore.timer);
+        countdownStore.timer = void 0;
+      }
+    };
+    const initCountdown = () => {
+      clearCountdown();
+      if (!order.orderTime) {
+        return;
+      }
+      const updateCountdown = () => {
+        let buyTime;
+        if (typeof order.orderTime === "string") {
+          const timeStr = order.orderTime.replace(" ", "T");
+          buyTime = new Date(timeStr).getTime();
+        } else {
+          buyTime = new Date(order.orderTime).getTime();
+        }
+        const time = buyTime + 15 * 60 * 1e3 - (/* @__PURE__ */ new Date()).getTime();
+        if (time > 0) {
+          const m = Math.floor(time / 1e3 / 60 % 60);
+          const s = Math.floor(time / 1e3 % 60);
+          countdownStore.showM = m;
+          countdownStore.showS = s;
+        } else {
+          clearCountdown();
+          countdownStore.showM = -1;
+          countdownStore.showS = -1;
+        }
+      };
+      updateCountdown();
+      countdownStore.timer = setInterval(updateCountdown, 1e3);
+    };
+    common_vendor.onUnload(() => {
+      clearCountdown();
+    });
+    common_vendor.onUnmounted(() => {
+      clearCountdown();
+    });
     const computedDeliveryFee = common_vendor.computed(() => {
       if (order.deliveryFee !== void 0 && order.deliveryFee !== null) {
         return Number(order.deliveryFee);
@@ -134,21 +180,25 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         phoneNumber: "1999"
       });
     };
+    let isNavigatingToPay = false;
     const toPay = async () => {
-      console.log("支付成功");
-      const payDTO = {
-        orderNumber: order.number,
-        payMethod: 1
-        // 本平台默认微信支付
-      };
-      await api_order.payOrderAPI(payDTO);
-      if (countdownStore.timer !== void 0) {
-        clearInterval(countdownStore.timer);
-        countdownStore.timer = void 0;
+      if (isNavigatingToPay) {
+        return;
       }
-      common_vendor.index.redirectTo({
-        url: "/pages/pay/pay?orderId=" + order.id + "&orderNumber=" + order.number + "&orderAmount=" + order.amount + "&orderTime=" + order.orderTime
-      });
+      isNavigatingToPay = true;
+      try {
+        clearCountdown();
+        common_vendor.index.redirectTo({
+          url: "/pages/pay/pay?orderId=" + order.id + "&orderNumber=" + order.number + "&orderAmount=" + order.amount + "&orderTime=" + order.orderTime
+        });
+      } catch (e) {
+        console.error("跳转支付页失败", e);
+        common_vendor.index.showToast({ title: "跳转失败", icon: "none" });
+      } finally {
+        setTimeout(() => {
+          isNavigatingToPay = false;
+        }, 1e3);
+      }
     };
     return (_ctx, _cache) => {
       return common_vendor.e({

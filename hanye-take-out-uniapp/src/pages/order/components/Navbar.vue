@@ -4,7 +4,7 @@
     <view class="navbar" :style="{paddingTop: safeAreaInsets?.top + 'px'}">
       <view class="logo">
         <!-- 如果没有logo图，可以用文字代替，或者保留你原有的image -->
-        <text class="logo-text">寒夜外卖 · 启动</text>
+        <text class="logo-text">{{ config.name || '外卖' }}</text>
       </view>
     </view>
 

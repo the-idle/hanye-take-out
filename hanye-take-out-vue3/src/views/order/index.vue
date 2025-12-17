@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Empty from '@/components/Empty.vue'
 import {
@@ -12,6 +12,7 @@ import {
   orderAcceptAPI,
   getOrderListByAPI,
 } from '@/api/order'
+import { getConfigAPI } from '@/api/shop'
 import type { Order, OrderVO } from '@/types/order'
 import { ElMessage } from 'element-plus'
 
@@ -97,6 +98,29 @@ const tabChange = (index: number) => {
 
 const route = useRoute()
 const router = useRouter()
+
+const shopConfig = ref<{ deliveryFee: number; deliveryStatus: number }>({
+  deliveryFee: 0,
+  deliveryStatus: 1,
+})
+
+const deliveryFee = computed(() => {
+  return shopConfig.value.deliveryStatus === 1 ? Number(shopConfig.value.deliveryFee || 0) : 0
+})
+
+const loadShopConfig = async () => {
+  try {
+    const { data: res } = await getConfigAPI()
+    if ((res.code === 0 || res.code === 1) && res.data) {
+      shopConfig.value = {
+        deliveryFee: Number(res.data.deliveryFee ?? 0),
+        deliveryStatus: Number(res.data.deliveryStatus ?? 0),
+      }
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
 
 // 初始化时需要分页查询，展示所有订单
 const init = async (activeIndex: number = 0, search?: boolean) => {
@@ -305,6 +329,7 @@ const getOrderType = (row: any) => {
 // init不够，还得在mounted里面再执行一遍，获取订单统计才行！
 init(Number(route.query.status) || 0)
 onMounted(async () => {
+  await loadShopConfig()
   if (route.query.status) {
     defaultActivity.value = Number(route.query.status)
   }
@@ -471,6 +496,13 @@ onMounted(async () => {
                   : diaForm!.estimatedDeliveryTime
                   }}</span>
               </div>
+              <div v-if="[2, 3, 4, 5].includes(dialogOrderStatus)" class="user-tableware">
+                <label>餐具数量：</label>
+                <span>{{
+                  diaForm!.tablewareNumber === -1 ? '无需餐具' : diaForm!.tablewareNumber === 0 ? '按餐量提供' :
+                  diaForm!.tablewareNumber
+                }}</span>
+              </div>
               <div class="user-address">
                 <label>地址：</label>
                 <span>{{ diaForm!.address }}</span>
@@ -500,7 +532,7 @@ onMounted(async () => {
             <div class="dish-all-amount">
               <label>菜品小计</label>
               <span>￥{{ diaForm && diaForm.amount && diaForm?.packAmount ?
-                (diaForm!.amount - 6 - diaForm!.packAmount).toFixed(2) : 0
+                (diaForm!.amount - deliveryFee - diaForm!.packAmount).toFixed(2) : 0
                 }}</span>
             </div>
           </div>
@@ -513,12 +545,12 @@ onMounted(async () => {
               <div class="dish-amount">
                 <span class="amount-name">菜品小计：</span>
                 <span class="amount-price">￥{{ (diaForm && typeof diaForm.amount === 'number' && typeof
-                  diaForm.packAmount === 'number') ? (((diaForm.amount - 6 - diaForm.packAmount) * 100) /
+                  diaForm.packAmount === 'number') ? (((diaForm.amount - deliveryFee - diaForm.packAmount) * 100) /
                   100).toFixed(2) : 0 }}</span>
               </div>
               <div class="send-amount">
                 <span class="amount-name">派送费：</span>
-                <span class="amount-price">￥{{ 6 }}</span>
+                <span class="amount-price">￥{{ (deliveryFee * 100 / 100).toFixed(2) }}</span>
               </div>
               <div class="package-amount">
                 <span class="amount-name">打包费：</span>

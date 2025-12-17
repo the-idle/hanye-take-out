@@ -14,23 +14,19 @@
       </uni-countdown>
     </view>
     <view class="price">￥{{ orderAmount }}</view>
-    <view class="shop">寒夜餐厅 - {{ orderNumber }}</view>
-    <view class="wechat">
-      <image class="pay" src="../../static/icon/pay.png" />
-      微信支付
-      <image class="choose" src="../../static/icon/choose.png" />
-    </view>
+    <view class="shop">{{ orderNumber }}</view>
     <view class="bottom">
-      <button class="comfirm_btn" type="primary" :plain="true" @click="toSuccess()">确认支付</button>
+      <button class="comfirm_btn" type="primary" :plain="true" @click="toSuccess()">确认下单</button>
     </view>
   </view>
 </template>
 
 <script lang="ts" setup>
 import {getOrderAPI, payOrderAPI, cancelOrderAPI} from '@/api/order'
-import {onLoad, onShow} from '@dcloudio/uni-app'
+import {onLoad, onShow, onUnload} from '@dcloudio/uni-app'
 import {useCountdownStore} from '@/stores/modules/countdown'
-import {ref} from 'vue'
+import {ref, onBeforeUnmount} from 'vue'
+import {http} from '@/utils/http'
 
 const countdownStore = useCountdownStore()
 
@@ -42,15 +38,42 @@ const orderTime = ref<Date>() // 订单时间
 const countdownRef = ref(null)
 
 onLoad(async (options: any) => {
-  console.log('orderTime什么东西？', options)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('支付页加载', options)
+  }
   orderId.value = options.orderId
   orderNumber.value = options.orderNumber
   orderAmount.value = options.orderAmount
-  orderTime.value = options.orderTime.replace(' ', 'T')
+  // 处理订单时间，确保格式正确
+  const timeStr = options.orderTime || options.orderTime
+  orderTime.value = typeof timeStr === 'string' ? timeStr.replace(' ', 'T') : timeStr
+  
+  // 如果是从订单详情页跳转过来的，需要重新获取订单信息以确保时间准确
+  if (!orderTime.value) {
+    try {
+      const res = await getOrderAPI(orderId.value)
+      if (res.data && res.data.orderTime) {
+        orderTime.value = res.data.orderTime
+      }
+    } catch (e) {
+      console.error('获取订单信息失败', e)
+    }
+  }
+  
+  // 启动倒计时（基于订单创建时间）
+  initCountdown()
 })
+
+// 防抖：避免重复提交
+let isSubmitting = false
 
 // 支付成功
 const toSuccess = async () => {
+  // 如果正在提交，直接返回
+  if (isSubmitting) {
+    return
+  }
+
   // 若订单已超时，跳转到订单已取消页面
   if (countdownStore.showM == -1 && countdownStore.showS == -1) {
     uni.redirectTo({
@@ -59,102 +82,122 @@ const toSuccess = async () => {
     return
   }
 
-  console.log('开始模拟支付...')
+  isSubmitting = true
+  uni.showLoading({title: '提交中...'})
 
-  // 1. 构造参数
-  const payDTO = {
-    orderNumber: orderNumber.value,
-    payMethod: 1,
+  try {
+    // 1. 构造参数
+    const payDTO = {
+      orderNumber: orderNumber.value,
+      payMethod: 1,
+    }
+
+    // 2. 使用http工具统一调用
+    const res = await http({
+      url: '/user/order/payment/mock',
+      method: 'PUT',
+      data: payDTO,
+    })
+
+    if (res.code === 0) {
+      // 关闭定时器
+      clearTimer()
+
+      // 跳转成功页
+      uni.redirectTo({
+        url:
+          '/pages/submit/success?orderId=' +
+          orderId.value +
+          '&orderNumber=' +
+          orderNumber.value +
+          '&orderAmount=' +
+          orderAmount.value +
+          '&orderTime=' +
+          orderTime.value,
+      })
+    } else {
+      uni.showToast({title: res.msg || '支付失败', icon: 'none'})
+    }
+  } catch (err: any) {
+    console.error('支付失败', err)
+    uni.showToast({title: err.msg || '网络请求失败', icon: 'none'})
+  } finally {
+    isSubmitting = false
+    uni.hideLoading()
   }
-
-  // 2. 直接调用后端写好的 /mock 接口 (这里直接用uni.request最稳妥，不用去改api文件了)
-  // 注意：url 前缀要和你 request.js 里的 baseUrl 一致，通常是 /api 或 /dev-api
-  // 如果你本地没配置代理，写全路径：http://localhost:8081/user/order/payment/mock
-  uni.request({
-    url: 'http://localhost:8081/user/order/payment/mock', // 请确保端口号和你后端一致
-    method: 'PUT',
-    data: payDTO,
-    header: {
-      authentication: uni.getStorageSync('token'), // 必须带上Token
-    },
-    success: (res: any) => {
-      if (res.data.code === 0) {
-        console.log('模拟支付成功')
-
-        // 关闭定时器
-        if (countdownStore.timer !== undefined) {
-          clearInterval(countdownStore.timer)
-          countdownStore.timer = undefined
-        }
-
-        // 跳转成功页
-        uni.redirectTo({
-          url:
-            '/pages/submit/success?orderId=' +
-            orderId.value +
-            '&orderNumber=' +
-            orderNumber.value +
-            '&orderAmount=' +
-            orderAmount.value +
-            '&orderTime=' +
-            orderTime.value,
-        })
-      } else {
-        uni.showToast({title: res.data.msg || '支付失败', icon: 'none'})
-      }
-    },
-    fail: (err) => {
-      console.log(err)
-      uni.showToast({title: '网络请求失败', icon: 'none'})
-    },
-  })
 }
 
-// 倒计时
-const timeup = () => {
-  console.log('------------ 执行了一次倒计时timeup ---------------')
-  // setInterval间歇调用，每隔一秒调用一次
-  let timeupSecond = ref(20)
-  // 如果 timer 已经存在，先清除它
+// 清理定时器
+const clearTimer = () => {
   if (countdownStore.timer !== undefined) {
     clearInterval(countdownStore.timer)
+    countdownStore.timer = undefined
   }
-  countdownStore.timer = setInterval(() => {
-    // console.log('什么timer？', countdownStore.timer)
-    // console.log('看看是不是一秒执行一次', orderTime.value)
-    // 订单下单时间
-    let buy_time = new Date(orderTime.value as Date).getTime()
-    // 计算剩余时间
-    // 测试20秒就够，正式15分钟
-    // let time = buy_time + 20 * 1000 - new Date().getTime()
-    // 最终代码是15分钟，测试时我才没那个功夫时间等！
-    let time = buy_time + 15 * 60 * 1000 - new Date().getTime()
-    console.log('time', time)
-    if (time > 0 && countdownStore.timer !== undefined) {
-      // 计算剩余的分钟
-      var m = (time / 1000 / 60) % 60
-      // console.log('m', m)
-      // 计算剩余的秒数
-      var s = (time / 1000) % 60
-      // console.log('s', s)
-      timeupSecond.value = time / 1000
-      // console.log('timeupSecond小于0？', timeupSecond.value)
-      countdownStore.showM = Math.floor(m)
-      countdownStore.showS = Math.floor(s)
-      // showTime.value = minutes.value + ':' + seconds.value
+}
+
+// 页面卸载时清理定时器
+onUnload(() => {
+  clearTimer()
+})
+
+onBeforeUnmount(() => {
+  clearTimer()
+})
+
+// 初始化倒计时 - 基于订单创建时间，而不是每次进入都重新开始
+const initCountdown = () => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log('初始化倒计时，订单时间:', orderTime.value)
+  }
+  
+  // 如果 timer 已经存在，先清除它
+  clearTimer()
+  
+  // 立即计算一次剩余时间
+  const updateCountdown = () => {
+    if (!orderTime.value) {
+      console.error('订单时间为空，无法计算倒计时')
+      return
+    }
+    
+    // 将订单时间转换为时间戳
+    let buyTime: number
+    if (typeof orderTime.value === 'string') {
+      // 处理时间字符串格式
+      const timeStr = orderTime.value.replace(' ', 'T')
+      buyTime = new Date(timeStr).getTime()
     } else {
-      console.log('订单已超时！')
-      clearInterval(countdownStore.timer) // 停止计时器
-      // 再重置pinia中的倒计时的分秒初始值
+      buyTime = new Date(orderTime.value as Date).getTime()
+    }
+    
+    // 计算剩余时间（15分钟 = 900000毫秒）
+    const time = buyTime + 15 * 60 * 1000 - new Date().getTime()
+    
+    if (time > 0) {
+      // 计算剩余的分钟和秒数
+      const m = Math.floor((time / 1000 / 60) % 60)
+      const s = Math.floor((time / 1000) % 60)
+      
+      countdownStore.showM = m
+      countdownStore.showS = s
+    } else {
+      // 订单已超时
+      if (process.env.NODE_ENV === 'development') {
+        console.log('订单已超时！')
+      }
+      clearTimer()
       countdownStore.showM = -1
       countdownStore.showS = -1
-      // uni.showToast({
-      //   title: '时间到',
-      // })
       // 取消订单
       cancelOrder()
     }
-  }, 1000)
+  }
+  
+  // 立即执行一次
+  updateCountdown()
+  
+  // 每秒更新一次
+  countdownStore.timer = setInterval(updateCountdown, 1000) as unknown as number
 }
 
 // 超时要取消订单
@@ -189,28 +232,6 @@ const cancelOrder = async () => {
     margin-top: 20rpx;
     font-size: 28rpx;
     color: #888;
-  }
-  .wechat {
-    display: flex;
-    width: 90%;
-    height: 80rpx;
-    line-height: 80rpx;
-    background-color: #fff;
-    border-radius: 10rpx;
-    margin: 100rpx 20rpx;
-    position: relative;
-    .pay {
-      width: 40rpx;
-      height: 40rpx;
-      padding: 20rpx;
-    }
-    .choose {
-      position: absolute;
-      width: 40rpx;
-      height: 40rpx;
-      top: 20rpx;
-      right: 20rpx;
-    }
   }
 }
 

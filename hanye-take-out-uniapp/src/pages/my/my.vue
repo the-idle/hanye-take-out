@@ -84,7 +84,7 @@
 <script lang="ts" setup>
 import pushMsg from '../../components/message/pushMsg.vue'
 import {ref, reactive} from 'vue'
-import {onLoad, onReachBottom} from '@dcloudio/uni-app'
+import {onLoad, onShow, onReachBottom} from '@dcloudio/uni-app'
 import {useUserStore} from '@/stores/modules/user'
 import {getUserInfoAPI} from '@/api/user'
 import {getOrderPageAPI, reOrderAPI, urgeOrderAPI} from '@/api/order'
@@ -144,40 +144,73 @@ const orderDTO = ref<OrderPageDTO>({
 const total = ref(0)
 
 onLoad(async (options) => {
-  console.log('options', options)
-  console.log('userStore', userStore.profile)
-  const res = await getUserInfo(user.id)
-  // 获取所有订单信息
-  await getOrderPage()
+  if (process.env.NODE_ENV === 'development') {
+    console.log('个人页加载', options)
+  }
+  await refreshData()
 })
 
+// 页面显示时刷新数据
+onShow(async () => {
+  await refreshData()
+})
+
+// 统一的数据刷新方法 - 优化：并行加载
+const refreshData = async () => {
+  // 重置分页和订单列表
+  orderDTO.value.page = 1
+  historyOrders.value = []
+  // 并行加载用户信息和订单数据，提升加载速度
+  await Promise.all([
+    getUserInfo(user.id),
+    getOrderPage(),
+  ])
+}
+
 const getUserInfo = async (id: number) => {
-  const res = await getUserInfoAPI(id)
-  console.log('用户信息', res)
-  user.name = res.data.name as string
-  user.gender = res.data.gender ?? 1 // 之前没设置就默认男士
-  user.phone = res.data.phone as string
-  user.pic = res.data.pic as string
+  try {
+    const res = await getUserInfoAPI(id)
+    user.name = res.data.name as string
+    user.gender = res.data.gender ?? 1 // 之前没设置就默认男士
+    user.phone = res.data.phone as string
+    user.pic = res.data.pic as string
+  } catch (e) {
+    console.error('获取用户信息失败', e)
+  }
 }
 
 const getOrderPage = async () => {
-  console.log('orderDTO', orderDTO.value)
-  const res = await getOrderPageAPI(orderDTO.value)
-  historyOrders.value = historyOrders.value.concat(res.data.records)
-  total.value = res.data.total
+  try {
+    const res = await getOrderPageAPI(orderDTO.value)
+    // 如果是第一页，直接替换；否则追加
+    if (orderDTO.value.page === 1) {
+      historyOrders.value = res.data.records
+    } else {
+      historyOrders.value = historyOrders.value.concat(res.data.records)
+    }
+    total.value = res.data.total
+  } catch (e) {
+    console.error('获取订单列表失败', e)
+  }
 }
 
 // 再来一单
 const reOrder = async (id: number) => {
-  console.log('再来一单', id)
-  // 菜品批量加入购物车之前，要先清空购物车，避免批量加入购物车后数据并不完全一样
-  await cleanCartAPI()
-  // 再来一单会将当前订单的菜品批量加入购物车，跳转到订单页面后，购物车将高亮显示
-  await reOrderAPI(id as number)
-
-  uni.switchTab({
-    url: '/pages/order/order',
-  })
+  try {
+    uni.showLoading({title: '加载中...'})
+    // 菜品批量加入购物车之前，要先清空购物车，避免批量加入购物车后数据并不完全一样
+    await cleanCartAPI()
+    // 再来一单会将当前订单的菜品批量加入购物车，跳转到订单页面后，购物车将高亮显示
+    await reOrderAPI(id as number)
+    uni.hideLoading()
+    uni.switchTab({
+      url: '/pages/order/order',
+    })
+  } catch (e) {
+    uni.hideLoading()
+    console.error('再来一单失败', e)
+    uni.showToast({title: '操作失败', icon: 'none'})
+  }
 }
 
 // 催单
@@ -193,10 +226,7 @@ const pushOrder = async (id: number) => {
 
 // 页面上拉触底事件的处理函数
 onReachBottom(() => {
-  console.log('Page:', orderDTO.value.page)
-  console.log('Page Size:', orderDTO.value.pageSize)
   if (orderDTO.value.page * orderDTO.value.pageSize >= Math.min(total.value, 12)) {
-    console.log('end!')
     // 达到最近订单展示上限
     uni.showToast({
       title: '更多订单信息请到历史订单查看！',

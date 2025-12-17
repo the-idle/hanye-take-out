@@ -44,58 +44,77 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     const dialogDish = common_vendor.ref();
     const flavors = common_vendor.ref([]);
     const chosedflavors = common_vendor.ref([]);
+    const closeFlavorDialog = () => {
+      visible.value = false;
+      flavors.value = [];
+      chosedflavors.value = [];
+      dialogDish.value = void 0;
+    };
     const getCategoryData = async () => {
-      const res = await api_category.getCategoryAPI();
-      console.log(res);
-      categoryList.value = res.data;
-      console.log("categoryList", categoryList.value);
-    };
-    const getDishOrSetmealList = async (index) => {
-      activeIndex.value = index;
-      console.log("index", index);
-      console.log("getList by this category", categoryList.value[index]);
-      let res;
-      if (categoryList.value[index].type === 1) {
-        res = await api_dish.getDishListAPI(categoryList.value[index].id);
-      } else {
-        res = await api_setmeal.getSetmealListAPI(categoryList.value[index].id);
-      }
-      console.log(res);
-      dishList.value = res.data;
-    };
-    const getShopData = async () => {
       try {
-        const res = await api_shop.getShopConfigAPI();
-        if (res.code === 0 || res.code === 1) {
-          shopConfig.value = res.data;
-        }
+        const res = await api_category.getCategoryAPI();
+        categoryList.value = res.data;
       } catch (e) {
-        console.error("获取店铺配置失败", e);
+        console.error("获取分类列表失败", e);
+        common_vendor.index.showToast({ title: "加载分类失败", icon: "none" });
+      }
+    };
+    let dishListLoading = false;
+    const getDishOrSetmealList = async (index) => {
+      if (dishListLoading)
+        return;
+      activeIndex.value = index;
+      const category = categoryList.value[index];
+      if (!category)
+        return;
+      dishListLoading = true;
+      try {
+        let res;
+        if (category.type === 1) {
+          res = await api_dish.getDishListAPI(category.id);
+        } else {
+          res = await api_setmeal.getSetmealListAPI(category.id);
+        }
+        dishList.value = res.data;
+      } catch (e) {
+        console.error("获取菜品/套餐列表失败", e);
+        common_vendor.index.showToast({ title: "加载失败", icon: "none" });
+      } finally {
+        dishListLoading = false;
       }
     };
     const getCartList = async () => {
-      const res = await api_cart.getCartAPI();
-      console.log("初始化购物车列表", res);
-      cartList.value = res.data;
-      CartAllNumber.value = cartList.value.reduce((acc, cur) => acc + cur.number, 0);
-      const goodsPrice = cartList.value.reduce((acc, cur) => acc + cur.amount * cur.number, 0);
-      let packPrice = 0;
-      if (shopConfig.value.packStatus === 1) {
-        packPrice = CartAllNumber.value * Number(shopConfig.value.packFee);
-      }
-      let deliveryPrice = 0;
-      if (shopConfig.value.deliveryStatus === 1) {
-        deliveryPrice = Number(shopConfig.value.deliveryFee);
-      }
-      CartAllPrice.value = goodsPrice + packPrice + deliveryPrice;
-      console.log("CartAllNumber", CartAllNumber.value);
-      console.log("CartAllPrice", CartAllPrice.value);
-      if (cartList.value.length === 0) {
-        openCartList.value = false;
+      try {
+        const res = await api_cart.getCartAPI();
+        cartList.value = res.data;
+        let totalNumber = 0;
+        let totalGoodsPrice = 0;
+        cartList.value.forEach((item) => {
+          totalNumber += item.number;
+          totalGoodsPrice += item.amount * item.number;
+        });
+        CartAllNumber.value = totalNumber;
+        let packPrice = 0;
+        if (shopConfig.value.packStatus === 1) {
+          packPrice = totalNumber * Number(shopConfig.value.packFee);
+        }
+        let deliveryPrice = 0;
+        if (shopConfig.value.deliveryStatus === 1) {
+          deliveryPrice = Number(shopConfig.value.deliveryFee);
+        }
+        CartAllPrice.value = totalGoodsPrice + packPrice + deliveryPrice;
+        if (cartList.value.length === 0) {
+          openCartList.value = false;
+        }
+      } catch (e) {
+        console.error("获取购物车失败", e);
       }
     };
     const chooseNorm = async (dish) => {
-      console.log("点击了选择规格chooseNorm，得到了该菜品的所有口味数据", dish.flavors);
+      {
+        console.log("选择规格", dish.flavors);
+      }
+      chosedflavors.value = [];
       flavors.value = dish.flavors;
       const tmpdish = Object.assign({}, dish);
       delete tmpdish.flavors;
@@ -133,12 +152,11 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       console.log("选好口味后，看看带口味字符串的，dialog中的菜品长什么样？ dialogDish", dialogDish.value);
     };
     const getCopies = (dish) => {
-      var _a, _b;
-      console.log("getCopies", dish);
-      if (categoryList.value[activeIndex.value].type === 1) {
-        return ((_a = cartList.value.find((item) => item.dishId === dish.id)) == null ? void 0 : _a.number) || 0;
+      var _a, _b, _c;
+      if (((_a = categoryList.value[activeIndex.value]) == null ? void 0 : _a.type) === 1) {
+        return ((_b = cartList.value.find((item) => item.dishId === dish.id)) == null ? void 0 : _b.number) || 0;
       } else {
-        return ((_b = cartList.value.find((item) => item.setmealId === dish.id)) == null ? void 0 : _b.number) || 0;
+        return ((_c = cartList.value.find((item) => item.setmealId === dish.id)) == null ? void 0 : _c.number) || 0;
       }
     };
     const addToCart = async (dish) => {
@@ -153,53 +171,68 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       const partialCart = { dishId: dish.id, dishFlavor: chosedflavors.value.join(",") };
       await api_cart.addToCartAPI(partialCart);
       await getCartList();
-      chosedflavors.value = [];
-      visible.value = false;
+      closeFlavorDialog();
     };
+    let cartActionLoading = false;
     const addDishAction = async (item, form) => {
-      console.log("点击了dialog的 “+” 添加菜品数量按钮", item, form);
-      console.log(categoryList.value[activeIndex.value].type === 1);
-      if (form == "购物车") {
-        console.log("addCart", item);
-        const partialCart = {
-          dishId: item.dishId,
-          setmealId: item.setmealId,
-          dishFlavor: item.dishFlavor
-        };
-        await api_cart.addToCartAPI(partialCart);
-      } else {
-        console.log("普通页面下的dish，点击能直接添加(而不弹出dialog)的菜品说明无口味", item);
-        if (categoryList.value[activeIndex.value].type === 1) {
-          const partialCart = { dishId: item.id };
+      var _a;
+      if (cartActionLoading)
+        return;
+      cartActionLoading = true;
+      try {
+        if (form == "购物车") {
+          const partialCart = {
+            dishId: item.dishId,
+            setmealId: item.setmealId,
+            dishFlavor: item.dishFlavor
+          };
           await api_cart.addToCartAPI(partialCart);
         } else {
-          const partialCart = { setmealId: item.id };
-          await api_cart.addToCartAPI(partialCart);
+          if (((_a = categoryList.value[activeIndex.value]) == null ? void 0 : _a.type) === 1) {
+            const partialCart = { dishId: item.id };
+            await api_cart.addToCartAPI(partialCart);
+          } else {
+            const partialCart = { setmealId: item.id };
+            await api_cart.addToCartAPI(partialCart);
+          }
         }
+        await getCartList();
+      } catch (e) {
+        console.error("添加菜品失败", e);
+        common_vendor.index.showToast({ title: "操作失败", icon: "none" });
+      } finally {
+        cartActionLoading = false;
       }
-      await getCartList();
     };
     const subDishAction = async (item, form) => {
-      console.log("点击了减少菜品数量按钮subDishAction--------------------", item, form);
-      if (form == "购物车") {
-        console.log("subCart", item);
-        const partialCart = {
-          dishId: item.dishId,
-          setmealId: item.setmealId,
-          dishFlavor: item.dishFlavor
-        };
-        await api_cart.subCartAPI(partialCart);
-      } else {
-        console.log("普通页面下的dish，不是dialog中的菜品说明无口味", item);
-        if (categoryList.value[activeIndex.value].type === 1) {
-          const partialCart = { dishId: item.id };
+      var _a;
+      if (cartActionLoading)
+        return;
+      cartActionLoading = true;
+      try {
+        if (form == "购物车") {
+          const partialCart = {
+            dishId: item.dishId,
+            setmealId: item.setmealId,
+            dishFlavor: item.dishFlavor
+          };
           await api_cart.subCartAPI(partialCart);
         } else {
-          const partialCart = { setmealId: item.id };
-          await api_cart.subCartAPI(partialCart);
+          if (((_a = categoryList.value[activeIndex.value]) == null ? void 0 : _a.type) === 1) {
+            const partialCart = { dishId: item.id };
+            await api_cart.subCartAPI(partialCart);
+          } else {
+            const partialCart = { setmealId: item.id };
+            await api_cart.subCartAPI(partialCart);
+          }
         }
+        await getCartList();
+      } catch (e) {
+        console.error("减少菜品失败", e);
+        common_vendor.index.showToast({ title: "操作失败", icon: "none" });
+      } finally {
+        cartActionLoading = false;
       }
-      await getCartList();
     };
     const clearCart = async () => {
       await api_cart.cleanCartAPI();
@@ -223,25 +256,27 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       });
     };
     common_vendor.onLoad(async () => {
-      try {
-        const res = await api_shop.getStatusAPI();
-        console.log("店铺状态---------", res);
-        if (res.data && res.data === 1) {
-          status.value = true;
-        } else {
-          status.value = false;
-        }
-      } catch (e) {
-        console.error(e);
+      const [statusRes, shopRes] = await Promise.allSettled([
+        api_shop.getStatusAPI(),
+        api_shop.getShopConfigAPI()
+      ]);
+      if (statusRes.status === "fulfilled" && statusRes.value.data === 1) {
         status.value = true;
+      } else {
+        status.value = false;
       }
-      await getShopData();
-      await getCategoryData();
-      await getDishOrSetmealList(0);
-      await getCartList();
+      if (shopRes.status === "fulfilled" && (shopRes.value.code === 0 || shopRes.value.code === 1)) {
+        shopConfig.value = shopRes.value.data;
+      }
+      await Promise.all([
+        getCategoryData(),
+        getCartList()
+      ]);
+      if (categoryList.value.length > 0) {
+        await getDishOrSetmealList(0);
+      }
     });
     common_vendor.onShow(async () => {
-      await getCategoryData();
       await getCartList();
     });
     return (_ctx, _cache) => {
@@ -259,6 +294,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
           };
         }),
         c: common_vendor.f(dishList.value, (dish, k0, i0) => {
+          var _a;
           return common_vendor.e({
             a: dish.pic,
             b: common_vendor.t(dish.name),
@@ -279,7 +315,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             k: common_vendor.o(($event) => addDishAction(dish, "普通"), dish.id)
           }), {
             l: dish.id,
-            m: `/pages/detail/detail?${categoryList.value[activeIndex.value].type === 1 ? "dishId" : "setmealId"}=${dish.id}`
+            m: `/pages/detail/detail?${((_a = categoryList.value[activeIndex.value]) == null ? void 0 : _a.type) === 1 ? "dishId" : "setmealId"}=${dish.id}`
           });
         }),
         d: common_vendor.f(flavors.value, (flavor, k0, i0) => {
@@ -297,7 +333,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
           };
         }),
         e: common_vendor.o(($event) => addToCart(dialogDish.value)),
-        f: common_vendor.o(($event) => visible.value = false),
+        f: common_vendor.o(($event) => closeFlavorDialog()),
         g: visible.value,
         h: cartList.value.length === 0
       }, cartList.value.length === 0 ? {

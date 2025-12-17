@@ -81,9 +81,9 @@ const chooseImg = () => {
 }
 
 // 在文件管理器中选择图片后触发的改变事件：预览
-const onFileChange1 = async (e) => {
-  const target = e.target
-  const files = target.files
+const onFileChange1 = async (e: Event) => {
+  const target = e.target as HTMLInputElement | null
+  const files = target?.files
   
   if (files && files.length > 0) {
     let file = files[0]
@@ -136,16 +136,25 @@ const onFileChange1 = async (e) => {
   }
 }
 // 辅助函数：图片压缩
-const compressImage = (file, quality = 0.6) => {
-  return new Promise((resolve) => {
+const compressImage = (file: File, quality = 0.6): Promise<File> => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.readAsDataURL(file)
-    reader.onload = (e) => {
+    reader.onload = () => {
+      const result = reader.result
+      if (typeof result !== 'string') {
+        reject(new Error('Invalid image data'))
+        return
+      }
       const img = new Image()
-      img.src = e.target.result
+      img.src = result
       img.onload = () => {
         const canvas = document.createElement('canvas')
         const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          reject(new Error('Canvas context is null'))
+          return
+        }
         // 保持宽高比，或者限制最大宽度
         canvas.width = img.width
         canvas.height = img.height
@@ -154,12 +163,18 @@ const compressImage = (file, quality = 0.6) => {
         
         // 压缩核心：quality 0-1 之间
         canvas.toBlob((blob) => {
+          if (!blob) {
+            reject(new Error('Image compression failed'))
+            return
+          }
           // 将 blob 转回 File 对象
           const newFile = new File([blob], file.name, { type: file.type })
           resolve(newFile)
         }, file.type, quality)
       }
+      img.onerror = () => reject(new Error('Image load failed'))
     }
+    reader.onerror = () => reject(new Error('File read failed'))
   })
 }
 

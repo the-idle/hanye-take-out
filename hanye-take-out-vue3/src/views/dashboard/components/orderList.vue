@@ -129,6 +129,13 @@
                 <label>{{ dialogOrderStatus === 5 ? '送达时间：' : '预计送达时间：' }}</label>
                 <span>{{ dialogOrderStatus === 5 ? diaForm!.deliveryTime : diaForm!.estimatedDeliveryTime }}</span>
               </div>
+              <div v-if="[2, 3, 4, 5].includes(dialogOrderStatus)" class="user-tableware">
+                <label>餐具数量：</label>
+                <span>{{
+                  diaForm!.tablewareNumber === -1 ? '无需餐具' : diaForm!.tablewareNumber === 0 ? '按餐量提供' :
+                  diaForm!.tablewareNumber
+                }}</span>
+              </div>
               <div class="user-address">
                 <label>地址：</label>
                 <span>{{ diaForm!.address }}</span>
@@ -155,7 +162,7 @@
             </div>
             <div class="dish-all-amount">
               <label>菜品小计</label>
-              <span>￥{{ (diaForm!.amount - 6 - diaForm!.packAmount).toFixed(2) }}</span>
+              <span>￥{{ (diaForm!.amount - deliveryFee - diaForm!.packAmount).toFixed(2) }}</span>
             </div>
           </div>
         </div>
@@ -166,12 +173,12 @@
             <div class="amount-list">
               <div class="dish-amount">
                 <span class="amount-name">菜品小计：</span>
-                <span class="amount-price">￥{{ (((diaForm!.amount - 6 - diaForm!.packAmount)
+                <span class="amount-price">￥{{ (((diaForm!.amount - deliveryFee - diaForm!.packAmount)
                   * 100) / 100).toFixed(2) }}</span>
               </div>
               <div class="send-amount">
                 <span class="amount-name">派送费：</span>
-                <span class="amount-price">￥6.00</span>
+                <span class="amount-price">￥{{ (deliveryFee * 100 / 100).toFixed(2) }}</span>
               </div>
               <div class="pack-amount">
                 <span class="amount-name">餐盒费：</span>
@@ -231,8 +238,8 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
 import Empty from '@/components/Empty.vue';
+import { getConfigAPI } from '@/api/shop'
 import {
   getOrderDetailPageAPI,
   queryOrderDetailByIdAPI,
@@ -245,7 +252,28 @@ import {
 import type { Order, OrderVO } from '@/types/order'
 import { ElMessage } from 'element-plus'
 
-const router = useRouter()
+const shopConfig = ref<{ deliveryFee: number; deliveryStatus: number }>({
+  deliveryFee: 0,
+  deliveryStatus: 1,
+})
+
+const deliveryFee = computed(() => {
+  return shopConfig.value.deliveryStatus === 1 ? Number(shopConfig.value.deliveryFee || 0) : 0
+})
+
+const loadShopConfig = async () => {
+  try {
+    const { data: res } = await getConfigAPI()
+    if ((res.code === 0 || res.code === 1) && res.data) {
+      shopConfig.value = {
+        deliveryFee: Number(res.data.deliveryFee ?? 0),
+        deliveryStatus: Number(res.data.deliveryStatus ?? 0),
+      }
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
 
 const orderStatics = ref<any>(''); // 订单统计数据
 const orderId = ref<string>(''); // 订单号
@@ -430,6 +458,7 @@ const handleCurrentChange = (val: number) => {
 
 onMounted(() => {
   // console.log('子组件已挂载');
+  loadShopConfig()
   getOrderListData(status.value);
 });
 

@@ -8,6 +8,7 @@
         class="banner-img"
         :src="dish.pic || '/static/images/logo.png'"
         mode="aspectFill"
+        lazy-load
         @error="handleImageError"
       />
       <image
@@ -15,6 +16,7 @@
         class="banner-img"
         :src="setmeal.pic || '/static/images/logo.png'"
         mode="aspectFill"
+        lazy-load
         @error="handleImageError"
       />
       <!-- 渐变遮罩，为了字看清楚 -->
@@ -74,7 +76,7 @@
       <view class="setmeal-list" v-if="setmeal && setmeal.setmealDishes && setmeal.setmealDishes.length > 0">
         <view class="section-title">套餐包含</view>
         <view class="sub-item" v-for="(item, index) in setmeal.setmealDishes" :key="index">
-          <image class="sub-img" :src="item.pic" mode="aspectFill"></image>
+          <image class="sub-img" :src="item.pic" mode="aspectFill" lazy-load></image>
           <view class="sub-info">
             <text class="sub-name">{{ item.name }}</text>
             <text class="sub-count">x{{ item.copies }}</text>

@@ -22,7 +22,9 @@ const orderTime = ref('')
 const arrivalTime = ref('')
 
 onLoad(async (options: any) => {
-  console.log('options', options)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('成功页加载', options)
+  }
   orderId.value = options.orderId
   orderNumber.value = options.orderNumber
   orderAmount.value = options.orderAmount

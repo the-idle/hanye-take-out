@@ -22,28 +22,6 @@
   font-size: 28rpx;
   color: #888;
 }
-.pay_box .wechat.data-v-8a6251df {
-  display: flex;
-  width: 90%;
-  height: 80rpx;
-  line-height: 80rpx;
-  background-color: #fff;
-  border-radius: 10rpx;
-  margin: 100rpx 20rpx;
-  position: relative;
-}
-.pay_box .wechat .pay.data-v-8a6251df {
-  width: 40rpx;
-  height: 40rpx;
-  padding: 20rpx;
-}
-.pay_box .wechat .choose.data-v-8a6251df {
-  position: absolute;
-  width: 40rpx;
-  height: 40rpx;
-  top: 20rpx;
-  right: 20rpx;
-}
 .bottom.data-v-8a6251df {
   position: fixed;
   bottom: 0;

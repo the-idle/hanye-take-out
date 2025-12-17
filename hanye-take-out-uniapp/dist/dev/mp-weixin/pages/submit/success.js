@@ -9,7 +9,9 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     const orderTime = common_vendor.ref("");
     const arrivalTime = common_vendor.ref("");
     common_vendor.onLoad(async (options) => {
-      console.log("options", options);
+      {
+        console.log("成功页加载", options);
+      }
       orderId.value = options.orderId;
       orderNumber.value = options.orderNumber;
       orderAmount.value = options.orderAmount;

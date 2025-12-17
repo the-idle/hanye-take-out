@@ -30,7 +30,7 @@
   <!-- 1、订单菜品列表 -->
   <view class="white_box">
     <view class="word_text">
-      <text class="word_style">寒页餐厅</text>
+      <text class="word_style">餐厅</text>
     </view>
     <view class="order-type">
       <view class="type_item" v-for="(obj, index) in order.orderDetailList" :key="index">
@@ -108,8 +108,8 @@
 
 <script lang="ts" setup>
 import pushMsg from '../../components/message/pushMsg.vue'
-import {ref, reactive, computed} from 'vue'
-import {onLoad} from '@dcloudio/uni-app'
+import {ref, reactive, computed, onUnmounted} from 'vue'
+import {onLoad, onUnload} from '@dcloudio/uni-app'
 import {getOrderAPI, cancelOrderAPI, reOrderAPI, urgeOrderAPI, payOrderAPI} from '@/api/order'
 import {cleanCartAPI} from '@/api/cart'
 import {useCountdownStore} from '@/stores/modules/countdown'
@@ -167,12 +167,83 @@ onLoad(async (options) => {
 })
 
 const getOrderDetail = async () => {
-  console.log('获取订单详情')
-  const res = await getOrderAPI(order.id as number)
-  console.log('res', res)
-  Object.assign(order, res.data)
-  console.log('刷新得到新的order', order)
+  try {
+    const res = await getOrderAPI(order.id as number)
+    Object.assign(order, res.data)
+    
+    // 如果是待付款状态，初始化倒计时
+    if (order.status === 1 && order.orderTime) {
+      initCountdown()
+    } else {
+      // 非待付款状态，清除倒计时
+      clearCountdown()
+    }
+  } catch (e) {
+    console.error('获取订单详情失败', e)
+  }
 }
+
+// 清理倒计时
+const clearCountdown = () => {
+  if (countdownStore.timer !== undefined) {
+    clearInterval(countdownStore.timer)
+    countdownStore.timer = undefined
+  }
+}
+
+// 初始化倒计时 - 基于订单创建时间
+const initCountdown = () => {
+  // 如果 timer 已经存在，先清除它
+  clearCountdown()
+  
+  if (!order.orderTime) {
+    return
+  }
+  
+  // 立即计算一次剩余时间
+  const updateCountdown = () => {
+    // 将订单时间转换为时间戳
+    let buyTime: number
+    if (typeof order.orderTime === 'string') {
+      const timeStr = order.orderTime.replace(' ', 'T')
+      buyTime = new Date(timeStr).getTime()
+    } else {
+      buyTime = new Date(order.orderTime as Date).getTime()
+    }
+    
+    // 计算剩余时间（15分钟）
+    const time = buyTime + 15 * 60 * 1000 - new Date().getTime()
+    
+    if (time > 0) {
+      // 计算剩余的分钟和秒数
+      const m = Math.floor((time / 1000 / 60) % 60)
+      const s = Math.floor((time / 1000) % 60)
+      
+      countdownStore.showM = m
+      countdownStore.showS = s
+    } else {
+      // 订单已超时
+      clearCountdown()
+      countdownStore.showM = -1
+      countdownStore.showS = -1
+    }
+  }
+  
+  // 立即执行一次
+  updateCountdown()
+  
+  // 每秒更新一次
+  countdownStore.timer = setInterval(updateCountdown, 1000) as unknown as number
+}
+
+// 页面卸载时清理定时器
+onUnload(() => {
+  clearCountdown()
+})
+
+onUnmounted(() => {
+  clearCountdown()
+})
 
 // 计算配送费：订单总金额 - 菜品总金额 - 打包费
 const computedDeliveryFee = computed(() => {
@@ -257,31 +328,43 @@ const connectShop = () => {
   })
 }
 
-// 支付成功
+// 防抖：避免重复点击
+let isNavigatingToPay = false
+
+// 支付成功 - 修复：使用mock接口而不是payment接口
 const toPay = async () => {
-  console.log('支付成功')
-  // 支付后修改订单状态
-  const payDTO = {
-    orderNumber: order.number as string,
-    payMethod: 1, // 本平台默认微信支付
+  // 如果正在跳转，直接返回
+  if (isNavigatingToPay) {
+    return
   }
-  await payOrderAPI(payDTO)
-  // 关闭定时器
-  if (countdownStore.timer !== undefined) {
-    clearInterval(countdownStore.timer)
-    countdownStore.timer = undefined
+  
+  isNavigatingToPay = true
+  
+  try {
+    // 关闭定时器
+    clearCountdown()
+    
+    // 直接跳转到支付页，支付页会调用mock接口
+    uni.redirectTo({
+      url:
+        '/pages/pay/pay?orderId=' +
+        order.id +
+        '&orderNumber=' +
+        order.number +
+        '&orderAmount=' +
+        order.amount +
+        '&orderTime=' +
+        order.orderTime,
+    })
+  } catch (e) {
+    console.error('跳转支付页失败', e)
+    uni.showToast({title: '跳转失败', icon: 'none'})
+  } finally {
+    // 延迟重置，避免快速点击
+    setTimeout(() => {
+      isNavigatingToPay = false
+    }, 1000)
   }
-  uni.redirectTo({
-    url:
-      '/pages/pay/pay?orderId=' +
-      order.id +
-      '&orderNumber=' +
-      order.number +
-      '&orderAmount=' +
-      order.amount +
-      '&orderTime=' +
-      order.orderTime,
-  })
 }
 </script>
 

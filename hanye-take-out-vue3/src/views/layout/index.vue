@@ -322,7 +322,10 @@ onBeforeUnmount(() => {
     </el-dialog>
     <el-container>
       <el-header>
-        <img src="../../assets/image/hanye_logo.png" class="logo" />
+        <!-- <img src="../../assets/image/hanye_logo.png" class="logo" /> -->
+        <div class="logo-text">
+          <h1 style="font-size: 24px; font-weight: bold;">后台管理</h1>
+        </div>
         <el-icon class="icon1" v-if="isCollapse">
           <Expand @click.stop="isCollapse = !isCollapse" />
         </el-icon>
@@ -380,6 +383,21 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="less" scoped>
+.logo-text {
+  display: inline-block;
+  margin: 10px 20px;
+  width: 180px;
+  height: 40px;
+  color: #fff;
+  font-weight: bold;
+  font-size: 24px;
+  text-align: center;
+  line-height: 60px;
+  vertical-align: middle;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 .common-layout {
   height: 100%;
   background-color: #eee;

@@ -34,7 +34,7 @@
                 <el-row :gutter="20">
                   <el-col :span="12">
                     <el-form-item label="店铺名称" prop="name">
-                      <el-input v-model="form.name" placeholder="例如：寒夜外卖(总店)" />
+                      <el-input v-model="form.name" placeholder="例如：XX餐厅(总店)" />
                     </el-form-item>
                   </el-col>
                   <el-col :span="12">

@@ -7,13 +7,6 @@ const submitOrderAPI = (params) => {
     data: params
   });
 };
-const payOrderAPI = (params) => {
-  return utils_http.http({
-    url: "/user/order/payment",
-    method: "PUT",
-    data: params
-  });
-};
 const getUnPayOrderAPI = () => {
   return utils_http.http({
     url: "/user/order/unPayOrderCount",
@@ -57,7 +50,6 @@ exports.cancelOrderAPI = cancelOrderAPI;
 exports.getOrderAPI = getOrderAPI;
 exports.getOrderPageAPI = getOrderPageAPI;
 exports.getUnPayOrderAPI = getUnPayOrderAPI;
-exports.payOrderAPI = payOrderAPI;
 exports.reOrderAPI = reOrderAPI;
 exports.submitOrderAPI = submitOrderAPI;
 exports.urgeOrderAPI = urgeOrderAPI;

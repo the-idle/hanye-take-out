@@ -41,27 +41,28 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     return (_ctx, _cache) => {
       var _a;
       return common_vendor.e({
-        a: ((_a = common_vendor.unref(safeAreaInsets)) == null ? void 0 : _a.top) + "px",
-        b: common_vendor.t(_ctx.status ? "营业中" : "打烊中"),
-        c: !_ctx.status ? 1 : "",
-        d: common_vendor.t(config.value.deliveryStatus === 1 ? config.value.deliveryFee : 0),
-        e: common_vendor.t(config.value.minOrderAmount),
-        f: common_vendor.p({
+        a: common_vendor.t(config.value.name || "外卖"),
+        b: ((_a = common_vendor.unref(safeAreaInsets)) == null ? void 0 : _a.top) + "px",
+        c: common_vendor.t(_ctx.status ? "营业中" : "打烊中"),
+        d: !_ctx.status ? 1 : "",
+        e: common_vendor.t(config.value.deliveryStatus === 1 ? config.value.deliveryFee : 0),
+        f: common_vendor.t(config.value.minOrderAmount),
+        g: common_vendor.p({
           type: "location",
           size: "14",
           color: "#666"
         }),
-        g: common_vendor.t(config.value.address),
-        h: common_vendor.p({
+        h: common_vendor.t(config.value.address),
+        i: common_vendor.p({
           type: "phone-filled",
           size: "18",
           color: "#00aaff"
         }),
-        i: common_vendor.o(phone),
-        j: common_vendor.t(config.value.openingHours || "全天"),
-        k: config.value.notice
+        j: common_vendor.o(phone),
+        k: common_vendor.t(config.value.openingHours || "全天"),
+        l: config.value.notice
       }, config.value.notice ? {
-        l: common_vendor.t(config.value.notice)
+        m: common_vendor.t(config.value.notice)
       } : {});
     };
   }

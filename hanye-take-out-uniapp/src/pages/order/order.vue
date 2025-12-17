@@ -24,9 +24,9 @@
               :key="dish.id"
               class="dish"
               hover-class="none"
-              :url="`/pages/detail/detail?${categoryList[activeIndex].type === 1 ? 'dishId' : 'setmealId'}=${dish.id}`"
+              :url="`/pages/detail/detail?${categoryList[activeIndex]?.type === 1 ? 'dishId' : 'setmealId'}=${dish.id}`"
             >
-              <image class="image" :src="dish.pic"></image>
+              <image class="image" :src="dish.pic" lazy-load mode="aspectFill"></image>
               <view class="dishinfo">
                 <view class="name ellipsis">{{ dish.name }}</view>
                 <view class="detail ellipsis">{{ dish.detail }}</view>
@@ -83,7 +83,7 @@
         </scroll-view>
         <view class="addToCart" @tap="addToCart(dialogDish as DishToCartItem)">加入购物车</view>
       </view>
-      <view class="close_dialog" @click="visible = false">×</view>
+      <view class="close_dialog" @click="closeFlavorDialog()">×</view>
     </view>
 
     <!-- 灰色空购物车 -->
@@ -133,7 +133,7 @@
         <scroll-view class="card_order_list" scroll-y scroll-top="40rpx">
           <view class="type_item" v-for="(obj, index) in cartList" :key="index">
             <view class="dish_img">
-              <image mode="aspectFill" :src="obj.pic" class="dish_img_url"></image>
+              <image mode="aspectFill" :src="obj.pic" class="dish_img_url" lazy-load></image>
             </view>
             <view class="dish_info">
               <view class="dish_name"> {{ obj.name }} </view>
@@ -222,26 +222,49 @@ const flavors = ref<FlavorItem[]>([])
 // 已选择的口味列表
 const chosedflavors = ref<string[]>([])
 
-// ------ method ------
-const getCategoryData = async () => {
-  const res = await getCategoryAPI()
-  console.log(res)
-  categoryList.value = res.data
-  console.log('categoryList', categoryList.value)
+const closeFlavorDialog = () => {
+  visible.value = false
+  flavors.value = []
+  chosedflavors.value = []
+  dialogDish.value = undefined
 }
 
-const getDishOrSetmealList = async (index: number) => {
-  activeIndex.value = index
-  console.log('index', index)
-  console.log('getList by this category', categoryList.value[index])
-  let res
-  if (categoryList.value[index].type === 1) {
-    res = await getDishListAPI(categoryList.value[index].id)
-  } else {
-    res = await getSetmealListAPI(categoryList.value[index].id)
+// ------ method ------
+const getCategoryData = async () => {
+  try {
+    const res = await getCategoryAPI()
+    categoryList.value = res.data
+  } catch (e) {
+    console.error('获取分类列表失败', e)
+    uni.showToast({title: '加载分类失败', icon: 'none'})
   }
-  console.log(res)
-  dishList.value = res.data
+}
+
+// 防抖处理，避免快速点击导致多次请求
+let dishListLoading = false
+const getDishOrSetmealList = async (index: number) => {
+  // 如果正在加载，直接返回
+  if (dishListLoading) return
+  
+  activeIndex.value = index
+  const category = categoryList.value[index]
+  if (!category) return
+  
+  dishListLoading = true
+  try {
+    let res
+    if (category.type === 1) {
+      res = await getDishListAPI(category.id)
+    } else {
+      res = await getSetmealListAPI(category.id)
+    }
+    dishList.value = res.data
+  } catch (e) {
+    console.error('获取菜品/套餐列表失败', e)
+    uni.showToast({title: '加载失败', icon: 'none'})
+  } finally {
+    dishListLoading = false
+  }
 }
 
 // 获取店铺配置
@@ -256,42 +279,53 @@ const getShopData = async () => {
   }
 }
 
-// 查询获取购物车列表
+// 查询获取购物车列表 - 优化计算性能
 const getCartList = async () => {
-  const res = await getCartAPI()
-  console.log('初始化购物车列表', res)
-  cartList.value = res.data
-  CartAllNumber.value = cartList.value.reduce((acc, cur) => acc + cur.number, 0)
+  try {
+    const res = await getCartAPI()
+    cartList.value = res.data
+    
+    // 优化：一次性计算所有值，减少多次遍历
+    let totalNumber = 0
+    let totalGoodsPrice = 0
+    
+    cartList.value.forEach((item) => {
+      totalNumber += item.number
+      totalGoodsPrice += item.amount * item.number
+    })
+    
+    CartAllNumber.value = totalNumber
 
-  // 计算总价格（包含打包费和配送费）
-  const goodsPrice = cartList.value.reduce((acc, cur) => acc + cur.amount * cur.number, 0)
+    // 计算打包费（如果开启）
+    let packPrice = 0
+    if (shopConfig.value.packStatus === 1) {
+      packPrice = totalNumber * Number(shopConfig.value.packFee)
+    }
 
-  // 计算打包费（如果开启）
-  let packPrice = 0
-  if (shopConfig.value.packStatus === 1) {
-    packPrice = CartAllNumber.value * Number(shopConfig.value.packFee)
-  }
+    // 计算配送费（如果开启）
+    let deliveryPrice = 0
+    if (shopConfig.value.deliveryStatus === 1) {
+      deliveryPrice = Number(shopConfig.value.deliveryFee)
+    }
 
-  // 计算配送费（如果开启）
-  let deliveryPrice = 0
-  if (shopConfig.value.deliveryStatus === 1) {
-    deliveryPrice = Number(shopConfig.value.deliveryFee)
-  }
+    // 总价 = 菜品 + 打包 + 配送
+    CartAllPrice.value = totalGoodsPrice + packPrice + deliveryPrice
 
-  // 总价 = 菜品 + 打包 + 配送
-  CartAllPrice.value = goodsPrice + packPrice + deliveryPrice
-
-  console.log('CartAllNumber', CartAllNumber.value)
-  console.log('CartAllPrice', CartAllPrice.value)
-  // 如果减少菜品导致购物车为空，关闭购物车列表
-  if (cartList.value.length === 0) {
-    openCartList.value = false
+    // 如果减少菜品导致购物车为空，关闭购物车列表
+    if (cartList.value.length === 0) {
+      openCartList.value = false
+    }
+  } catch (e) {
+    console.error('获取购物车失败', e)
   }
 }
 
 // 只有菜品才要选择规格/口味(多种口味规格数据处理)
 const chooseNorm = async (dish: DishItem) => {
-  console.log('点击了选择规格chooseNorm，得到了该菜品的所有口味数据', dish.flavors)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('选择规格', dish.flavors)
+  }
+  chosedflavors.value = []
   // 所有口味数据放到flavors中
   flavors.value = dish.flavors
   // dish -> dialogDish, flavor涉及类型转换(所有flavors -> 已选的flavors)，需要绕过ts校验
@@ -350,9 +384,8 @@ const chooseFlavor = (obj: string[], flavor: string) => {
 
 // 获取购物车中某个菜品的数量
 const getCopies = (dish: DishItem | SetmealItem) => {
-  console.log('getCopies', dish)
   // 有可能是菜品/套餐，所以要判断
-  if (categoryList.value[activeIndex.value].type === 1) {
+  if (categoryList.value[activeIndex.value]?.type === 1) {
     return cartList.value.find((item) => item.dishId === dish.id)?.number || 0
   } else {
     return cartList.value.find((item) => item.setmealId === dish.id)?.number || 0
@@ -376,63 +409,76 @@ const addToCart = async (dish: DishToCartItem) => {
   // 数据库更新，所以拿到新的购物车列表(cartList)，页面才能跟着刷新
   await getCartList()
   // 请求发送成功后，清空已选择的口味数据，并关闭dialog弹窗
-  chosedflavors.value = []
-  visible.value = false
+  closeFlavorDialog()
 }
+
+// 防抖：避免快速点击导致多次请求
+let cartActionLoading = false
 
 // "+"按钮，form: 购物车/普通视图中的按钮
 const addDishAction = async (item: any, form: string) => {
-  console.log('点击了dialog的 “+” 添加菜品数量按钮', item, form)
-  console.log(categoryList.value[activeIndex.value].type === 1)
-  if (form == '购物车') {
-    // 1、直接数量-1，传的参数是cartItem类型，dishId、setmealId必是一个null 一个不null，所以直接全传
-    console.log('addCart', item)
-    const partialCart: Partial<CartDTO> = {
-      dishId: item.dishId,
-      setmealId: item.setmealId,
-      dishFlavor: item.dishFlavor,
-    }
-    await addToCartAPI(partialCart)
-  } else {
-    // 2、dishItem无dishId、setmealId两个属性，因此得判断
-    console.log('普通页面下的dish，点击能直接添加(而不弹出dialog)的菜品说明无口味', item)
-    if (categoryList.value[activeIndex.value].type === 1) {
-      const partialCart: Partial<CartDTO> = {dishId: item.id}
+  // 如果正在处理，直接返回
+  if (cartActionLoading) return
+  
+  cartActionLoading = true
+  try {
+    if (form == '购物车') {
+      const partialCart: Partial<CartDTO> = {
+        dishId: item.dishId,
+        setmealId: item.setmealId,
+        dishFlavor: item.dishFlavor,
+      }
       await addToCartAPI(partialCart)
     } else {
-      const partialCart: Partial<CartDTO> = {setmealId: item.id}
-      await addToCartAPI(partialCart)
+      if (categoryList.value[activeIndex.value]?.type === 1) {
+        const partialCart: Partial<CartDTO> = {dishId: item.id}
+        await addToCartAPI(partialCart)
+      } else {
+        const partialCart: Partial<CartDTO> = {setmealId: item.id}
+        await addToCartAPI(partialCart)
+      }
     }
+    // 数据库更新，所以拿到新的购物车列表(cartList)，页面才能跟着刷新
+    await getCartList()
+  } catch (e) {
+    console.error('添加菜品失败', e)
+    uni.showToast({title: '操作失败', icon: 'none'})
+  } finally {
+    cartActionLoading = false
   }
-  // 数据库更新，所以拿到新的购物车列表(cartList)，页面才能跟着刷新
-  await getCartList()
 }
 
 // "-"按钮，form: 购物车/普通视图中的按钮
 const subDishAction = async (item: any, form: string) => {
-  console.log('点击了减少菜品数量按钮subDishAction--------------------', item, form)
-  if (form == '购物车') {
-    // 1、直接数量-1，传的参数是cartItem类型，dishId、setmealId必是一个null 一个不null，所以直接全传
-    console.log('subCart', item)
-    const partialCart: Partial<CartDTO> = {
-      dishId: item.dishId,
-      setmealId: item.setmealId,
-      dishFlavor: item.dishFlavor,
-    }
-    await subCartAPI(partialCart)
-  } else {
-    // 2、dishItem无dishId、setmealId两个属性，因此得判断
-    console.log('普通页面下的dish，不是dialog中的菜品说明无口味', item)
-    if (categoryList.value[activeIndex.value].type === 1) {
-      const partialCart: Partial<CartDTO> = {dishId: item.id}
+  // 如果正在处理，直接返回
+  if (cartActionLoading) return
+  
+  cartActionLoading = true
+  try {
+    if (form == '购物车') {
+      const partialCart: Partial<CartDTO> = {
+        dishId: item.dishId,
+        setmealId: item.setmealId,
+        dishFlavor: item.dishFlavor,
+      }
       await subCartAPI(partialCart)
     } else {
-      const partialCart: Partial<CartDTO> = {setmealId: item.id}
-      await subCartAPI(partialCart)
+      if (categoryList.value[activeIndex.value]?.type === 1) {
+        const partialCart: Partial<CartDTO> = {dishId: item.id}
+        await subCartAPI(partialCart)
+      } else {
+        const partialCart: Partial<CartDTO> = {setmealId: item.id}
+        await subCartAPI(partialCart)
+      }
     }
+    // 数据库更新，所以拿到新的购物车列表(cartList)，页面才能跟着刷新
+    await getCartList()
+  } catch (e) {
+    console.error('减少菜品失败', e)
+    uni.showToast({title: '操作失败', icon: 'none'})
+  } finally {
+    cartActionLoading = false
   }
-  // 数据库更新，所以拿到新的购物车列表(cartList)，页面才能跟着刷新
-  await getCartList()
 }
 
 // 清空购物车
@@ -462,29 +508,39 @@ const submitOrder = () => {
   })
 }
 
-// 页面加载
+// 页面加载 - 优化：并行加载数据，减少等待时间
 onLoad(async () => {
-  try {
-    const res = await getStatusAPI()
-    console.log('店铺状态---------', res)
-    if (res.data && res.data === 1) {
-      status.value = true
-    } else {
-      status.value = false
-    }
-  } catch (e) {
-    // 接口报错时，为了不影响演示，可以默认设为 true，或者 false
-    console.error(e)
+  // 并行加载店铺状态和配置
+  const [statusRes, shopRes] = await Promise.allSettled([
+    getStatusAPI(),
+    getShopConfigAPI(),
+  ])
+  
+  // 处理店铺状态
+  if (statusRes.status === 'fulfilled' && statusRes.value.data === 1) {
     status.value = true
+  } else {
+    status.value = false
   }
-  // 获取店铺配置（必须在获取购物车之前）
-  await getShopData()
-  await getCategoryData()
-  await getDishOrSetmealList(0) // 默认加载第一个分类下的菜品列表
-  await getCartList() // 获取购物车列表(一开始为空)
+  
+  // 处理店铺配置
+  if (shopRes.status === 'fulfilled' && (shopRes.value.code === 0 || shopRes.value.code === 1)) {
+    shopConfig.value = shopRes.value.data
+  }
+  
+  // 并行加载分类和购物车
+  await Promise.all([
+    getCategoryData(),
+    getCartList(),
+  ])
+  
+  // 分类加载完成后，加载第一个分类的菜品
+  if (categoryList.value.length > 0) {
+    await getDishOrSetmealList(0)
+  }
 })
 onShow(async () => {
-  await getCategoryData()
+  // 只刷新购物车
   await getCartList()
 })
 </script>
