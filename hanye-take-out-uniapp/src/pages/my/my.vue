@@ -161,10 +161,7 @@ const refreshData = async () => {
   orderDTO.value.page = 1
   historyOrders.value = []
   // 并行加载用户信息和订单数据，提升加载速度
-  await Promise.all([
-    getUserInfo(user.id),
-    getOrderPage(),
-  ])
+  await Promise.all([getUserInfo(user.id), getOrderPage()])
 }
 
 const getUserInfo = async (id: number) => {

@@ -256,10 +256,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       });
     };
     common_vendor.onLoad(async () => {
-      const [statusRes, shopRes] = await Promise.allSettled([
-        api_shop.getStatusAPI(),
-        api_shop.getShopConfigAPI()
-      ]);
+      const [statusRes, shopRes] = await Promise.allSettled([api_shop.getStatusAPI(), api_shop.getShopConfigAPI()]);
       if (statusRes.status === "fulfilled" && statusRes.value.data === 1) {
         status.value = true;
       } else {
@@ -268,10 +265,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       if (shopRes.status === "fulfilled" && (shopRes.value.code === 0 || shopRes.value.code === 1)) {
         shopConfig.value = shopRes.value.data;
       }
-      await Promise.all([
-        getCategoryData(),
-        getCartList()
-      ]);
+      await Promise.all([getCategoryData(), getCartList()]);
       if (categoryList.value.length > 0) {
         await getDishOrSetmealList(0);
       }

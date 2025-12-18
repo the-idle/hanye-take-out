@@ -72,10 +72,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     const refreshData = async () => {
       orderDTO.value.page = 1;
       historyOrders.value = [];
-      await Promise.all([
-        getUserInfo(user.id),
-        getOrderPage()
-      ]);
+      await Promise.all([getUserInfo(user.id), getOrderPage()]);
     };
     const getUserInfo = async (id) => {
       try {

@@ -13,8 +13,8 @@ export type Order = Partial<{
   status: number // 订单状态 1待付款 2待接单 3已接单 4派送中 5已完成 6已取消
   userId: number // 下单用户id
   addressBookId: number // 地址id
-  orderTime: Date // 下单时间
-  checkoutTime: Date // 结账时间
+  orderTime: string | Date // 下单时间
+  checkoutTime: string | Date // 结账时间
   payMethod: number // 支付方式 1微信，2支付宝
   payStatus: number // 支付状态 0未支付 1已支付 2退款
   amount: number // 实收金额
@@ -25,10 +25,10 @@ export type Order = Partial<{
   consignee: string // 收货人
   cancelReason: string // 订单取消原因
   rejectionReason: string // 订单拒绝原因
-  cancelTime: Date // 订单取消时间
-  estimatedDeliveryTime: Date // 预计送达时间
+  cancelTime: string | Date // 订单取消时间
+  estimatedDeliveryTime: string | Date // 预计送达时间
   deliveryStatus: number // 配送状态  1立即送出  0选择具体时间
-  deliveryTime: Date // 送达时间
+  deliveryTime: string | Date // 送达时间
   packAmount: number // 打包费
   deliveryFee?: number // 配送费（可选字段，如果后端没有返回则前端计算）
   tablewareNumber: number // 餐具数量

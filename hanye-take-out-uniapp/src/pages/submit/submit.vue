@@ -112,7 +112,7 @@
         <text class="ico">￥ </text> {{ parseFloat((Math.round(CartAllPrice * 100) / 100).toFixed(2)) }}</view
       >
       <view class="order_but">
-        <view class="order_but_rit" @click="payOrderHandle()"> 去支付 </view>
+        <view class="order_but_rit" @click="payOrderHandle()"> 去下单 </view>
       </view>
     </view>
     <view class="mask-box"></view>

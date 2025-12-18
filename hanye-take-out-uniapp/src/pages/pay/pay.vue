@@ -33,9 +33,15 @@ const countdownStore = useCountdownStore()
 const orderId = ref(0) // 订单id
 const orderNumber = ref('') // 订单号
 const orderAmount = ref(0) // 订单金额
-const orderTime = ref<Date>() // 订单时间
+const orderTime = ref<string | Date>() // 订单时间
 
 const countdownRef = ref(null)
+
+const timeup = () => {
+  clearTimer()
+  countdownStore.showM = -1
+  countdownStore.showS = -1
+}
 
 onLoad(async (options: any) => {
   if (process.env.NODE_ENV === 'development') {
@@ -45,9 +51,9 @@ onLoad(async (options: any) => {
   orderNumber.value = options.orderNumber
   orderAmount.value = options.orderAmount
   // 处理订单时间，确保格式正确
-  const timeStr = options.orderTime || options.orderTime
+  const timeStr = options.orderTime
   orderTime.value = typeof timeStr === 'string' ? timeStr.replace(' ', 'T') : timeStr
-  
+
   // 如果是从订单详情页跳转过来的，需要重新获取订单信息以确保时间准确
   if (!orderTime.value) {
     try {
@@ -59,7 +65,7 @@ onLoad(async (options: any) => {
       console.error('获取订单信息失败', e)
     }
   }
-  
+
   // 启动倒计时（基于订单创建时间）
   initCountdown()
 })
@@ -149,17 +155,17 @@ const initCountdown = () => {
   if (process.env.NODE_ENV === 'development') {
     console.log('初始化倒计时，订单时间:', orderTime.value)
   }
-  
+
   // 如果 timer 已经存在，先清除它
   clearTimer()
-  
+
   // 立即计算一次剩余时间
   const updateCountdown = () => {
     if (!orderTime.value) {
       console.error('订单时间为空，无法计算倒计时')
       return
     }
-    
+
     // 将订单时间转换为时间戳
     let buyTime: number
     if (typeof orderTime.value === 'string') {
@@ -169,15 +175,15 @@ const initCountdown = () => {
     } else {
       buyTime = new Date(orderTime.value as Date).getTime()
     }
-    
+
     // 计算剩余时间（15分钟 = 900000毫秒）
     const time = buyTime + 15 * 60 * 1000 - new Date().getTime()
-    
+
     if (time > 0) {
       // 计算剩余的分钟和秒数
       const m = Math.floor((time / 1000 / 60) % 60)
       const s = Math.floor((time / 1000) % 60)
-      
+
       countdownStore.showM = m
       countdownStore.showS = s
     } else {
@@ -192,10 +198,10 @@ const initCountdown = () => {
       cancelOrder()
     }
   }
-  
+
   // 立即执行一次
   updateCountdown()
-  
+
   // 每秒更新一次
   countdownStore.timer = setInterval(updateCountdown, 1000) as unknown as number
 }

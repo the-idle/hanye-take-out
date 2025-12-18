@@ -2,6 +2,7 @@
 const common_vendor = require("../../common/vendor.js");
 const api_order = require("../../api/order.js");
 const api_cart = require("../../api/cart.js");
+const api_shop = require("../../api/shop.js");
 const stores_modules_countdown = require("../../stores/modules/countdown.js");
 require("../../utils/http.js");
 require("../../stores/modules/user.js");
@@ -65,11 +66,38 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       orderDetailList: []
       // 订单详情
     });
+    const shopConfig = common_vendor.ref({
+      id: 1,
+      name: "",
+      address: "",
+      latitude: "",
+      longitude: "",
+      phone: "",
+      deliveryFee: 0,
+      deliveryStatus: 1,
+      packFee: 0,
+      packStatus: 1,
+      minOrderAmount: 0,
+      openingHours: "",
+      notice: "",
+      autoAccept: 0
+    });
     common_vendor.onLoad(async (options) => {
       console.log("options", options);
       order.id = Number(options.orderId);
+      await getShopData();
       await getOrderDetail();
     });
+    const getShopData = async () => {
+      try {
+        const res = await api_shop.getShopConfigAPI();
+        if (res.code === 0 || res.code === 1) {
+          shopConfig.value = res.data;
+        }
+      } catch (e) {
+        console.error("获取店铺配置失败", e);
+      }
+    };
     const getOrderDetail = async () => {
       try {
         const res = await api_order.getOrderAPI(order.id);
@@ -176,8 +204,12 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     };
     const connectShop = () => {
       console.log("联系商家");
+      if (!shopConfig.value.phone) {
+        common_vendor.index.showToast({ title: "商家电话未配置", icon: "none" });
+        return;
+      }
       common_vendor.index.makePhoneCall({
-        phoneNumber: "1999"
+        phoneNumber: shopConfig.value.phone
       });
     };
     let isNavigatingToPay = false;
@@ -231,7 +263,8 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       }, order.status === 2 || order.status === 6 ? {
         l: common_vendor.o(reOrder)
       } : {}, {
-        m: common_vendor.f(order.orderDetailList, (obj, index, i0) => {
+        m: common_vendor.t(shopConfig.value.name || "餐厅"),
+        n: common_vendor.f(order.orderDetailList, (obj, index, i0) => {
           return common_vendor.e({
             a: obj.pic,
             b: common_vendor.t(obj.name),
@@ -247,17 +280,17 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             h: index
           });
         }),
-        n: common_vendor.t(order.packAmount),
-        o: common_vendor.t(computedDeliveryFee.value.toFixed(2)),
-        p: common_vendor.t(order.amount),
-        q: common_vendor.o(connectShop),
-        r: common_vendor.t(order.remark),
-        s: common_vendor.t(order.tablewareNumber == -1 ? "无需餐具" : order.tablewareNumber == 0 ? "商家根据餐量提供" : order.tablewareNumber),
-        t: common_vendor.t(order.number),
-        v: common_vendor.t(order.orderTime),
-        w: common_vendor.t(order.estimatedDeliveryTime),
-        x: common_vendor.t(order.address),
-        y: common_vendor.sr(childComp, "2d945b00-1", {
+        o: common_vendor.t(order.packAmount || 0),
+        p: common_vendor.t(computedDeliveryFee.value.toFixed(2)),
+        q: common_vendor.t(order.amount || 0),
+        r: common_vendor.o(connectShop),
+        s: common_vendor.t(order.remark),
+        t: common_vendor.t(order.tablewareNumber == -1 ? "无需餐具" : order.tablewareNumber == 0 ? "商家根据餐量提供" : order.tablewareNumber),
+        v: common_vendor.t(order.number),
+        w: common_vendor.t(order.orderTime),
+        x: common_vendor.t(order.estimatedDeliveryTime),
+        y: common_vendor.t(order.address),
+        z: common_vendor.sr(childComp, "2d945b00-1", {
           "k": "childComp"
         })
       });

@@ -51,7 +51,7 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="tablewareNumber" label="餐具数量" min-width="80" align="center" v-if="status === 3">
+            <el-table-column prop="tablewareNumber" label="餐具数量" min-width="80" align="center" v-if="[2, 3].includes(status)">
               <template #default="scope">
                 {{ scope.row.tablewareNumber === -1 ? '无需餐具' : scope.row.tablewareNumber === 0 ? '按餐量提供' :
                   scope.row.tablewareNumber }}
@@ -336,8 +336,8 @@ const getOrderListData = async (status: number) => {
   orderData.value = data.data.data.records;
   counts.value = data.data.data.total;
   if (dialogOrderStatus.value === 2 && status === 2 && isAutoNext.value
-    && !isTableOperateBtn.value && data.data.records.length > 1) {
-    const firstRow = data.data.records[0];
+    && !isTableOperateBtn.value && data.data.data.records.length > 1) {
+    const firstRow = data.data.data.records[0];
     goDetail(firstRow.id, firstRow.status, firstRow);
   }
 };
@@ -430,7 +430,7 @@ const goDetail = async (id: any, status: number, row: any) => {
   orderId.value = id
   const { data: res } = await queryOrderDetailByIdAPI({ orderId: id })
   diaForm!.value = res.data
-  Object.assign(my_row, row)
+  my_row.value = row
   // router.push('/dashboard')
   dialogVisible.value = true
   dialogOrderStatus.value = status

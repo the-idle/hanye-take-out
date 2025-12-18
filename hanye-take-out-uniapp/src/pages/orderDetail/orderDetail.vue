@@ -30,7 +30,7 @@
   <!-- 1、订单菜品列表 -->
   <view class="white_box">
     <view class="word_text">
-      <text class="word_style">餐厅</text>
+      <text class="word_style">{{ shopConfig.name || '餐厅' }}</text>
     </view>
     <view class="order-type">
       <view class="type_item" v-for="(obj, index) in order.orderDetailList" :key="index">
@@ -48,14 +48,14 @@
       </view>
       <view class="word_text">
         <view class="word_left">打包费</view>
-        <view class="word_right">￥{{ order.packAmount }}</view>
+        <view class="word_right">￥{{ order.packAmount || 0 }}</view>
       </view>
       <view class="word_text">
         <view class="word_left">配送费</view>
         <view class="word_right">￥{{ computedDeliveryFee.toFixed(2) }}</view>
       </view>
       <view class="all_price">
-        <text class="word_right">总价 ￥{{ order.amount }}</text>
+        <text class="word_right">总价 ￥{{ order.amount || 0 }}</text>
       </view>
     </view>
   </view>
@@ -112,8 +112,10 @@ import {ref, reactive, computed, onUnmounted} from 'vue'
 import {onLoad, onUnload} from '@dcloudio/uni-app'
 import {getOrderAPI, cancelOrderAPI, reOrderAPI, urgeOrderAPI, payOrderAPI} from '@/api/order'
 import {cleanCartAPI} from '@/api/cart'
+import {getShopConfigAPI} from '@/api/shop'
 import {useCountdownStore} from '@/stores/modules/countdown'
 import type {Order, OrderVO} from '@/types/order'
+import type {ShopConfig} from '@/types/shop'
 
 const childComp: any = ref(null)
 
@@ -160,17 +162,46 @@ const order = reactive<OrderVO>({
   orderDetailList: [], // 订单详情
 })
 
+const shopConfig = ref<ShopConfig>({
+  id: 1,
+  name: '',
+  address: '',
+  latitude: '',
+  longitude: '',
+  phone: '',
+  deliveryFee: 0,
+  deliveryStatus: 1,
+  packFee: 0,
+  packStatus: 1,
+  minOrderAmount: 0,
+  openingHours: '',
+  notice: '',
+  autoAccept: 0,
+})
+
 onLoad(async (options) => {
   console.log('options', options)
   order.id = Number(options!.orderId)
+  await getShopData()
   await getOrderDetail()
 })
+
+const getShopData = async () => {
+  try {
+    const res = await getShopConfigAPI()
+    if (res.code === 0 || res.code === 1) {
+      shopConfig.value = res.data
+    }
+  } catch (e) {
+    console.error('获取店铺配置失败', e)
+  }
+}
 
 const getOrderDetail = async () => {
   try {
     const res = await getOrderAPI(order.id as number)
     Object.assign(order, res.data)
-    
+
     // 如果是待付款状态，初始化倒计时
     if (order.status === 1 && order.orderTime) {
       initCountdown()
@@ -195,11 +226,11 @@ const clearCountdown = () => {
 const initCountdown = () => {
   // 如果 timer 已经存在，先清除它
   clearCountdown()
-  
+
   if (!order.orderTime) {
     return
   }
-  
+
   // 立即计算一次剩余时间
   const updateCountdown = () => {
     // 将订单时间转换为时间戳
@@ -210,15 +241,15 @@ const initCountdown = () => {
     } else {
       buyTime = new Date(order.orderTime as Date).getTime()
     }
-    
+
     // 计算剩余时间（15分钟）
     const time = buyTime + 15 * 60 * 1000 - new Date().getTime()
-    
+
     if (time > 0) {
       // 计算剩余的分钟和秒数
       const m = Math.floor((time / 1000 / 60) % 60)
       const s = Math.floor((time / 1000) % 60)
-      
+
       countdownStore.showM = m
       countdownStore.showS = s
     } else {
@@ -228,10 +259,10 @@ const initCountdown = () => {
       countdownStore.showS = -1
     }
   }
-  
+
   // 立即执行一次
   updateCountdown()
-  
+
   // 每秒更新一次
   countdownStore.timer = setInterval(updateCountdown, 1000) as unknown as number
 }
@@ -323,8 +354,12 @@ const reOrder = async () => {
 // 联系商家
 const connectShop = () => {
   console.log('联系商家')
+  if (!shopConfig.value.phone) {
+    uni.showToast({title: '商家电话未配置', icon: 'none'})
+    return
+  }
   uni.makePhoneCall({
-    phoneNumber: '1999',
+    phoneNumber: shopConfig.value.phone,
   })
 }
 
@@ -337,13 +372,13 @@ const toPay = async () => {
   if (isNavigatingToPay) {
     return
   }
-  
+
   isNavigatingToPay = true
-  
+
   try {
     // 关闭定时器
     clearCountdown()
-    
+
     // 直接跳转到支付页，支付页会调用mock接口
     uni.redirectTo({
       url:

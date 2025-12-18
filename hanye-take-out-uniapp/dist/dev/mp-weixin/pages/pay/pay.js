@@ -21,6 +21,11 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     const orderAmount = common_vendor.ref(0);
     const orderTime = common_vendor.ref();
     common_vendor.ref(null);
+    const timeup = () => {
+      clearTimer();
+      countdownStore.showM = -1;
+      countdownStore.showS = -1;
+    };
     common_vendor.onLoad(async (options) => {
       {
         console.log("支付页加载", options);
@@ -28,7 +33,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       orderId.value = options.orderId;
       orderNumber.value = options.orderNumber;
       orderAmount.value = options.orderAmount;
-      const timeStr = options.orderTime || options.orderTime;
+      const timeStr = options.orderTime;
       orderTime.value = typeof timeStr === "string" ? timeStr.replace(" ", "T") : timeStr;
       if (!orderTime.value) {
         try {
@@ -136,7 +141,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       return common_vendor.e({
         a: common_vendor.unref(countdownStore).showM == 0 && common_vendor.unref(countdownStore).showS == 0
       }, common_vendor.unref(countdownStore).showM == 0 && common_vendor.unref(countdownStore).showS == 0 ? {} : {
-        b: common_vendor.o(($event) => _ctx.timeup()),
+        b: common_vendor.o(($event) => timeup()),
         c: common_vendor.p({
           color: "#888",
           ["show-day"]: false,

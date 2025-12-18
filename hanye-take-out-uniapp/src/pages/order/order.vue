@@ -245,11 +245,11 @@ let dishListLoading = false
 const getDishOrSetmealList = async (index: number) => {
   // 如果正在加载，直接返回
   if (dishListLoading) return
-  
+
   activeIndex.value = index
   const category = categoryList.value[index]
   if (!category) return
-  
+
   dishListLoading = true
   try {
     let res
@@ -284,16 +284,16 @@ const getCartList = async () => {
   try {
     const res = await getCartAPI()
     cartList.value = res.data
-    
+
     // 优化：一次性计算所有值，减少多次遍历
     let totalNumber = 0
     let totalGoodsPrice = 0
-    
+
     cartList.value.forEach((item) => {
       totalNumber += item.number
       totalGoodsPrice += item.amount * item.number
     })
-    
+
     CartAllNumber.value = totalNumber
 
     // 计算打包费（如果开启）
@@ -419,7 +419,7 @@ let cartActionLoading = false
 const addDishAction = async (item: any, form: string) => {
   // 如果正在处理，直接返回
   if (cartActionLoading) return
-  
+
   cartActionLoading = true
   try {
     if (form == '购物车') {
@@ -452,7 +452,7 @@ const addDishAction = async (item: any, form: string) => {
 const subDishAction = async (item: any, form: string) => {
   // 如果正在处理，直接返回
   if (cartActionLoading) return
-  
+
   cartActionLoading = true
   try {
     if (form == '购物车') {
@@ -511,29 +511,23 @@ const submitOrder = () => {
 // 页面加载 - 优化：并行加载数据，减少等待时间
 onLoad(async () => {
   // 并行加载店铺状态和配置
-  const [statusRes, shopRes] = await Promise.allSettled([
-    getStatusAPI(),
-    getShopConfigAPI(),
-  ])
-  
+  const [statusRes, shopRes] = await Promise.allSettled([getStatusAPI(), getShopConfigAPI()])
+
   // 处理店铺状态
   if (statusRes.status === 'fulfilled' && statusRes.value.data === 1) {
     status.value = true
   } else {
     status.value = false
   }
-  
+
   // 处理店铺配置
   if (shopRes.status === 'fulfilled' && (shopRes.value.code === 0 || shopRes.value.code === 1)) {
     shopConfig.value = shopRes.value.data
   }
-  
+
   // 并行加载分类和购物车
-  await Promise.all([
-    getCategoryData(),
-    getCartList(),
-  ])
-  
+  await Promise.all([getCategoryData(), getCartList()])
+
   // 分类加载完成后，加载第一个分类的菜品
   if (categoryList.value.length > 0) {
     await getDishOrSetmealList(0)
